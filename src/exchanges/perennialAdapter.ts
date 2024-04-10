@@ -61,12 +61,12 @@ import {
   AccountInfoData
 } from '../interfaces/V1/IRouterAdapterBaseV1'
 import { rpc } from '../common/provider'
-import { getAddress, zeroAddress, Address } from 'viem-v2'
+import { getAddress, zeroAddress, Address, parseUnits } from 'viem-v2'
 import { arbitrum as arbitrumChain, optimism } from 'viem/chains'
 import { arbitrum } from 'viem-v2/chains'
 import { Chain } from 'viem'
 import { decodeMarketId, encodeMarketId } from '../common/markets'
-import { tokens } from '../common/tokens'
+import { Token, tokens } from '../common/tokens'
 import { FixedNumber } from '../common/fixedNumber'
 import { ActionParam } from '../interfaces/IActionExecutor'
 import { BigNumber } from 'ethers'
@@ -84,13 +84,26 @@ import { getPaginatedResponse, toAmountInfo } from '../common/helper'
 import { ZERO_FN } from '../common/constants'
 
 const _rpcUrl = rpc[arbitrum.id].connection.url
-const graphUrl = process.env.PERENNIAL_GRAPH_URL_ARBITRUM || ''
+const graphUrl = 'https://subgraph.satsuma-prod.com/1f212ca11a3d/equilibria/perennial-v2-arbitrum/api'
 
 /// Constants
 const pythUrl = process.env.PERENNIAL_PYTH_URL || 'https://hermes.pyth.network'
-const PNL_COLLATERAL_TOKEN = tokens['USDC.e']
+const PNL_COLLATERAL_TOKEN = {
+  symbol: 'PN-USD',
+  name: 'Perennial USD',
+  decimals: 6,
+  address: {
+    42161: undefined,
+    10: undefined
+  }
+} as Token
 
-const perennial = new PerennialSDK({ chainId: arbitrum.id, rpcUrl: _rpcUrl, graphUrl, pythUrl })
+const perennial = new PerennialSDK({
+  chainId: arbitrum.id,
+  rpcUrl: _rpcUrl,
+  graphUrl,
+  pythUrl
+})
 
 export const assetToRageToken = (asset: SupportedAsset) => {
   return {
@@ -116,11 +129,7 @@ const getOrderTypeFromOpenOrder = (order: OpenOrder) => {
 const formatOpenOrderToOrderInfo = (order: OpenOrder) => {
   return {
     orderType: getOrderTypeFromOpenOrder(order) as OrderType,
-    marketId: encodeMarketId(
-      arbitrum.id.toString(),
-      'PERENNIAL',
-      addressToAsset(getAddress(order.market)) as SupportedAsset
-    ),
+    marketId: encodePerennialMarketId(addressToAsset(getAddress(order.market)) as SupportedAsset),
     mode: 'ISOLATED' as MarketMode,
     tif: undefined,
     protocolId: 'PERENNIAL' as ProtocolId,
@@ -138,13 +147,34 @@ const formatOpenOrderToOrderInfo = (order: OpenOrder) => {
   }
 }
 
+const decodePerennialMarketId = (marketId: string) => {
+  const { protocolMarketId } = decodeMarketId(marketId)
+  return protocolMarketId.toLowerCase()
+}
+
+const encodePerennialMarketId = (asset: string) => {
+  return encodeMarketId(arbitrum.id.toString(), 'PERENNIAL', asset.toUpperCase())
+}
+
+type GetMaxLeverageParams = {
+  wallet: string
+  marketId: string
+  collateral: string
+}
+
 export default class PerennialAdapter implements IAdapterV1 {
   protocolId: ProtocolId = 'PERENNIAL'
   private sdk: PerennialSDK = perennial
   private operatorApproved: boolean = false
 
   constructor(rpcUrl?: string) {
-    if (rpcUrl) this.sdk = new PerennialSDK({ chainId: arbitrum.id, rpcUrl: rpcUrl, graphUrl, pythUrl })
+    if (rpcUrl)
+      this.sdk = new PerennialSDK({
+        chainId: arbitrum.id,
+        rpcUrl: rpcUrl,
+        graphUrl,
+        pythUrl
+      })
   }
 
   async init(wallet: string | undefined, opts?: ApiOpts | undefined): Promise<void> {
@@ -155,7 +185,11 @@ export default class PerennialAdapter implements IAdapterV1 {
     this._listenAndInvalidateOnMarketUpdates()
   }
 
-  setCredentials(): void {
+  clearCredentials(): void {
+    throw new Error('Method not implemented.')
+  }
+
+  async setCredentials(): Promise<void> {
     throw new Error('Method not implemented.')
   }
 
@@ -177,6 +211,26 @@ export default class PerennialAdapter implements IAdapterV1 {
 
   claimFunding(wallet: string, opts?: ApiOpts): Promise<ActionParam[]> {
     throw new Error('Method not implemented.')
+  }
+
+  async getMaxLeverage({ wallet, collateral, marketId }: GetMaxLeverageParams): Promise<FixedNumber> {
+    const account = getAddress(wallet)
+    const marketSnapshots = await this._cachedMarketSnapshots({ address: account })
+
+    if (!marketSnapshots || !marketSnapshots.user) throw new Error('No market data')
+
+    const protocolMarketId = decodePerennialMarketId(marketId)
+    const marketSnapshot = marketSnapshots.market[protocolMarketId as SupportedAsset]
+
+    if (!marketSnapshot) throw new Error('No market snapshot')
+
+    const maxLeverage = calcMaxLeverage({
+      margin: marketSnapshot.riskParameter.margin,
+      minMargin: marketSnapshot.riskParameter.minMargin,
+      collateral: parseUnits(collateral, 6)
+    })
+
+    return FixedNumber.fromValue(maxLeverage, 6, 6)
   }
 
   getClaimHistory(
@@ -201,14 +255,21 @@ export default class PerennialAdapter implements IAdapterV1 {
 
     for (let i = 0; i < orderData.length; i++) {
       const newOrder = orderData[i]
-      const { protocolMarketId } = decodeMarketId(newOrder.marketId)
+      const protocolMarketId = decodePerennialMarketId(newOrder.marketId)
+
       const userMarketSnapshot = marketSnapshots.user[protocolMarketId as SupportedAsset]
       const marketSnapshot = marketSnapshots.market[protocolMarketId as SupportedAsset]
 
       if (!marketSnapshot) throw new Error('No market snapshot')
 
       const orderDelta = Big6Math.fromFloatString(newOrder.sizeDelta.amount.toString())
-      const collateralDelta = Big6Math.fromFloatString(newOrder.marginDelta.amount.toString())
+      const availableToTrade = await this.getAvailableToTrade(
+        wallet,
+        { market: newOrder.marketId } as AvailableToTradeParams<this['protocolId']>,
+        opts
+      )
+      const remainingMarginDelta = availableToTrade.amount.sub(newOrder.marginDelta.amount)
+      const collateralDelta = Big6Math.fromFloatString(remainingMarginDelta.toString())
       const positionSide = newOrder.direction === 'LONG' ? PositionSide.long : PositionSide.short
 
       const newPosition = orderDelta + (userMarketSnapshot?.nextMagnitude ?? 0)
@@ -296,7 +357,7 @@ export default class PerennialAdapter implements IAdapterV1 {
     for (let i = 0; i < closePositionData.length; i++) {
       const closeOrder = closePositionData[i]
       const ragePosition = positionInfo[i]
-      const { protocolMarketId } = decodeMarketId(ragePosition.marketId)
+      const protocolMarketId = decodePerennialMarketId(ragePosition.marketId)
       const userMarketSnapshot = marketSnapshots.user[protocolMarketId as SupportedAsset]
       const marketSnapshot = marketSnapshots.market[protocolMarketId as SupportedAsset]
       if (!marketSnapshot) throw new Error('No market snapshot')
@@ -362,7 +423,7 @@ export default class PerennialAdapter implements IAdapterV1 {
 
     for (let i = 0; i < existingPos.length; i++) {
       const ragePosition = existingPos[i]
-      const { protocolMarketId } = decodeMarketId(ragePosition.marketId)
+      const protocolMarketId = decodePerennialMarketId(ragePosition.marketId)
       const userMarketSnapshot = marketSnapshots.user[protocolMarketId as SupportedAsset]
       const marketSnapshot = marketSnapshots.market[protocolMarketId as SupportedAsset]
 
@@ -412,7 +473,10 @@ export default class PerennialAdapter implements IAdapterV1 {
   }
 
   async getAccountInfo(wallet: string, opts?: ApiOpts): Promise<AccountInfo[]> {
-    const marketSnapshots = await this._cachedMarketSnapshots({ address: getAddress(wallet), opts })
+    const marketSnapshots = await this._cachedMarketSnapshots({
+      address: getAddress(wallet),
+      opts
+    })
     if (!marketSnapshots?.user) return []
 
     const accountInfos: AccountInfoData<'PERENNIAL'>[] = await Promise.all(
@@ -486,7 +550,7 @@ export default class PerennialAdapter implements IAdapterV1 {
     const markets: Markets = []
 
     for (let i = 0; i < marketIDs.length; i++) {
-      const { protocolMarketId } = decodeMarketId(marketIDs[i])
+      const protocolMarketId = decodePerennialMarketId(marketIDs[i])
       const asset = protocolMarketId.toLowerCase() as SupportedAsset
       const marketAddress = ChainMarkets[arbitrum.id][asset]
       if (!marketAddress) continue
@@ -520,7 +584,7 @@ export default class PerennialAdapter implements IAdapterV1 {
       const liquidationTx = liquidatedSubpositionHistory.changes[0]
 
       liquidations.push({
-        marketId: encodeMarketId(arbitrum.id.toString(), 'PERENNIAL', position.asset),
+        marketId: encodePerennialMarketId(position.asset),
         timestamp: new Date(Number(liquidationTx.blockTimestamp) * 1000).getTime(),
         direction: position.side === PositionSide.long ? 'LONG' : 'SHORT',
         sizeClosed: toAmountInfo(BigNumber.from(position.startSize), 6, true),
@@ -545,8 +609,11 @@ export default class PerennialAdapter implements IAdapterV1 {
 
     if (!params) return zeroAmount
 
-    const marketSnapshots = await this._cachedMarketSnapshots({ address: getAddress(wallet), opts })
-    const asset = decodeMarketId(params.market).protocolMarketId as SupportedAsset
+    const marketSnapshots = await this._cachedMarketSnapshots({
+      address: getAddress(wallet),
+      opts
+    })
+    const asset = decodePerennialMarketId(params.market) as SupportedAsset
 
     if (!marketSnapshots?.user?.[asset]) return zeroAmount
 
@@ -554,11 +621,15 @@ export default class PerennialAdapter implements IAdapterV1 {
   }
 
   async deposit(params: DepositWithdrawParams[]): Promise<ActionParam[]> {
+    console.log('Deposit')
+
     const txs: ActionParam[] = []
     const supportedChainIds: number[] = this.supportedChains().map((chain) => chain.id)
 
     for (const param of params) {
-      const { protocol, chainId, amount, wallet, token } = param
+      const { protocol, chainId, amount, wallet, token, market } = param
+      if (!market) throw new Error('invalid market id')
+      const perennialMarketId = decodePerennialMarketId(market)
       const account = getAddress(wallet)
       const marketSnapshots = await this._cachedMarketSnapshots({ address: account })
       const approveOperatorTx = await this._approveMarketFactory(wallet)
@@ -575,7 +646,7 @@ export default class PerennialAdapter implements IAdapterV1 {
       if (amount.value > usdcAllowance) {
         const approveTx = await this._approveUSDC({
           account,
-          market: token.symbol.toLowerCase() as SupportedAsset,
+          market: perennialMarketId as SupportedAsset,
           amount: amount.value,
           marketSnapshots
         })
@@ -583,7 +654,7 @@ export default class PerennialAdapter implements IAdapterV1 {
           txs.push(approveTx)
         }
       }
-      const productAddress = ChainMarkets[arbitrum.id][token.symbol.toLowerCase() as SupportedAsset]
+      const productAddress = ChainMarkets[arbitrum.id][perennialMarketId as SupportedAsset]
       if (protocol !== 'PERENNIAL') throw new Error('invalid protocol id')
       if (!supportedChainIds.includes(chainId)) throw new Error('chain id mismatch')
       if (!productAddress) throw new Error('invalid product address')
@@ -618,8 +689,10 @@ export default class PerennialAdapter implements IAdapterV1 {
     const txs: ActionParam[] = []
     const supportedChainIds: number[] = this.supportedChains().map((chain) => chain.id)
     for (const param of params) {
-      const { protocol, chainId, amount, token, wallet } = param
-      const productAddress = ChainMarkets[arbitrum.id][token.symbol.toLowerCase() as SupportedAsset]
+      const { protocol, chainId, amount, token, wallet, market } = param
+      if (!market) throw new Error('invalid market id')
+      const perennialMarketId = decodePerennialMarketId(market)
+      const productAddress = ChainMarkets[arbitrum.id][perennialMarketId as SupportedAsset]
       if (protocol !== 'PERENNIAL') throw new Error('invalid protocol id')
       if (!supportedChainIds.includes(chainId)) throw new Error('chain id mismatch')
       if (!productAddress) throw new Error('invalid product address')
@@ -658,8 +731,7 @@ export default class PerennialAdapter implements IAdapterV1 {
       const usdcContract = this.sdk.contracts.getUSDCContract()
       const udscBalance = await usdcContract.read.balanceOf([account])
       const usdcAllowance = await usdcContract.read.allowance([account, MultiInvokerAddresses[arbitrum.id]])
-      const balanceFN = FixedNumber.fromValue(udscBalance, 6)
-      const allowanceFN = FixedNumber.fromValue(usdcAllowance, 6)
+      const balanceFN = FixedNumber.fromValue(udscBalance, 6, 6)
       const approveOperatorTx = await this._approveMarketFactory(wallet)
 
       if (approveOperatorTx) {
@@ -667,10 +739,13 @@ export default class PerennialAdapter implements IAdapterV1 {
       }
 
       const marketOracles = await this.sdk.markets.read.marketOracles()
-      const marketSnapshots = await this._cachedMarketSnapshots({ address: account, opts })
+      const marketSnapshots = await this._cachedMarketSnapshots({
+        address: account,
+        opts
+      })
       for (const order of orderData) {
         const { marketId, sizeDelta, marginDelta, direction, type } = order
-        const { protocolMarketId } = decodeMarketId(marketId)
+        const protocolMarketId = decodePerennialMarketId(marketId)
         const productAddress = ChainMarkets[arbitrum.id][protocolMarketId as SupportedAsset]
 
         if (!productAddress) throw new Error('Invalid market id')
@@ -683,12 +758,20 @@ export default class PerennialAdapter implements IAdapterV1 {
             ? userPositionData.nextMagnitude + sizeDelta.amount.toFormat(6).value
             : userPositionData.nextMagnitude - sizeDelta.amount.toFormat(6).value
 
+        const availableToTrade = await this.getAvailableToTrade(
+          wallet,
+          { market: marketId } as AvailableToTradeParams<this['protocolId']>,
+          opts
+        )
+        const remainingMarginDelta = availableToTrade.amount.sub(marginDelta.amount)
         // Check margin delta against the user's balance and allowance
-        if (!marginDelta.amount.isNegative() && marginDelta.amount.value > balanceFN.value) {
+        if (!remainingMarginDelta.isNegative() && remainingMarginDelta.gt(balanceFN)) {
           throw new Error('Insufficient balance')
         }
-        if (!marginDelta.amount.isNegative() && marginDelta.amount.value > allowanceFN.value) {
-          const approveTxData = await this.sdk.operator.build.approveUSDC({ suggestedAmount: marginDelta.amount.value })
+        if (!remainingMarginDelta.isNegative() && remainingMarginDelta.value > usdcAllowance) {
+          const approveTxData = await this.sdk.operator.build.approveUSDC({
+            suggestedAmount: remainingMarginDelta.value
+          })
           if (approveTxData.data) {
             txs.push({
               tx: {
@@ -713,7 +796,7 @@ export default class PerennialAdapter implements IAdapterV1 {
           positionChangeTxData = await this.sdk.markets.build.modifyPosition({
             positionSide,
             positionAbs,
-            collateralDelta: marginDelta.amount.toFormat(6).value,
+            collateralDelta: remainingMarginDelta.toFormat(6).value,
             interfaceFeeRate: interfaceFeeBps,
             settlementFee: marketSnapshot?.parameter.settlementFee ?? 0n,
             address: account,
@@ -727,7 +810,7 @@ export default class PerennialAdapter implements IAdapterV1 {
             side: positionSide,
             positionAbs,
             delta: sizeDelta.amount.toFormat(6).value,
-            collateralDelta: marginDelta.amount.toFormat(6).value,
+            collateralDelta: remainingMarginDelta.toFormat(6).value,
             limitPrice: order.triggerData?.triggerPrice.toFormat(6).value,
             address: account,
             marketAddress: productAddress,
@@ -781,7 +864,7 @@ export default class PerennialAdapter implements IAdapterV1 {
 
       if (closeSize > positionSize) throw new Error('close size cannot be greater than position size')
 
-      const { protocolMarketId } = decodeMarketId(position.marketId)
+      const protocolMarketId = decodePerennialMarketId(position.marketId)
       const productAddress = ChainMarkets[arbitrum.id][protocolMarketId as SupportedAsset]
       if (!productAddress) throw new Error('Invalid market id')
       if (!marketSnapshots?.user) throw new Error('No user position data')
@@ -826,7 +909,7 @@ export default class PerennialAdapter implements IAdapterV1 {
     if (!marketSnapshots) throw new Error('No market data')
 
     for (const order of orderData) {
-      const { protocolMarketId } = decodeMarketId(order.marketId)
+      const protocolMarketId = decodePerennialMarketId(order.marketId)
       const marketAsset = protocolMarketId as SupportedAsset
       const marketAddress = ChainMarkets[arbitrum.id][marketAsset]
       if (!marketAddress) throw new Error('Invalid market id')
@@ -899,7 +982,7 @@ export default class PerennialAdapter implements IAdapterV1 {
     let txs: ActionParam[] = []
     for (const order of orderData) {
       const { marketId, orderId } = order
-      const { protocolMarketId } = decodeMarketId(marketId)
+      const protocolMarketId = decodePerennialMarketId(marketId)
       const productAddress = ChainMarkets[arbitrum.id][protocolMarketId as SupportedAsset]
       if (!productAddress) throw new Error('Invalid market id')
       const cancelOrderTxData = await this.sdk.markets.build.cancelOrder([[productAddress, BigInt(orderId)]])
@@ -941,7 +1024,7 @@ export default class PerennialAdapter implements IAdapterV1 {
     for (let i = 0; i < positionInfo.length; i++) {
       const updateData = updatePositionMarginData[i]
       const { marketId } = positionInfo[i]
-      const { protocolMarketId } = decodeMarketId(marketId)
+      const protocolMarketId = decodePerennialMarketId(marketId)
       const productAddress = ChainMarkets[arbitrum.id][protocolMarketId as SupportedAsset]
 
       if (!productAddress) throw new Error('Invalid market id')
@@ -992,7 +1075,7 @@ export default class PerennialAdapter implements IAdapterV1 {
       hasAgent: false,
       hasAccount: true,
       hasOrderbook: false,
-      sizeDeltaInToken: false,
+      sizeDeltaInToken: true,
       explicitFundingClaim: false,
       collateralDeltaInToken: false,
       collateralUsesLimitPricing: false,
@@ -1004,18 +1087,22 @@ export default class PerennialAdapter implements IAdapterV1 {
     return info
   }
 
-  async supportedMarkets(chains: Chain[], opts?: ApiOpts): Promise<MarketInfo[]> {
+  async supportedMarkets(chains: Chain[] | undefined, opts?: ApiOpts): Promise<MarketInfo[]> {
     const marketInfo = await this._cachedMarkets(opts)
     return Object.values(marketInfo)
   }
 
   async getMarketPrices(marketIds: Market['marketId'][], opts?: ApiOpts): Promise<FixedNumber[]> {
-    const marketSnapshots = await this._cachedMarketSnapshots({ address: zeroAddress, opts })
+    const marketSnapshots = await this._cachedMarketSnapshots({
+      address: zeroAddress,
+      opts
+    })
     if (!marketSnapshots) {
       return []
     }
     return marketIds.map((marketId) => {
-      const { protocolMarketId } = decodeMarketId(marketId)
+      const protocolMarketId = decodePerennialMarketId(marketId)
+      console.log({ protocolMarketId })
       const market = marketSnapshots.market[protocolMarketId as SupportedAsset]
       if (!market) {
         // TODO: handle this case
@@ -1039,11 +1126,14 @@ export default class PerennialAdapter implements IAdapterV1 {
 
   async getDynamicMarketMetadata(marketIds: Market['marketId'][], opts?: ApiOpts): Promise<DynamicMarketMetadata[]> {
     const metadata: DynamicMarketMetadata[] = []
-    const marketSnapshots = await this._cachedMarketSnapshots({ address: zeroAddress, opts })
+    const marketSnapshots = await this._cachedMarketSnapshots({
+      address: zeroAddress,
+      opts
+    })
     if (!marketSnapshots) throw new Error('No market data')
 
     for (const mId of marketIds) {
-      const { protocolMarketId } = decodeMarketId(mId)
+      const protocolMarketId = decodePerennialMarketId(mId)
       const market = marketSnapshots.market[protocolMarketId as SupportedAsset]
       if (!market) throw new Error(`Market ${mId} not found`)
 
@@ -1063,8 +1153,8 @@ export default class PerennialAdapter implements IAdapterV1 {
         oiShort: FixedNumber.fromValue(shortOi, 6),
         availableLiquidityLong: FixedNumber.fromValue(availableLongLiquidity, 6),
         availableLiquidityShort: FixedNumber.fromValue(availableShortLiquidity, 6),
-        longFundingRate: FixedNumber.fromValue(longRate.hourlyFunding, 6),
-        shortFundingRate: FixedNumber.fromValue(shortRate.hourlyFunding, 6),
+        longFundingRate: FixedNumber.fromValue(longRate.hourlyFunding * -1n, 6),
+        shortFundingRate: FixedNumber.fromValue(shortRate.hourlyFunding * -1n, 6),
         longBorrowRate: FixedNumber.fromString('0'), // TODO: figure out borrow rate
         shortBorrowRate: FixedNumber.fromString('0'),
         isOiBifurcated: false
@@ -1084,7 +1174,7 @@ export default class PerennialAdapter implements IAdapterV1 {
     const markets: Markets = []
 
     for (let i = 0; i < marketIDs.length; i++) {
-      const { protocolMarketId } = decodeMarketId(marketIDs[i])
+      const protocolMarketId = decodePerennialMarketId(marketIDs[i])
       const asset = protocolMarketId.toLowerCase() as SupportedAsset
       const marketAddress = ChainMarkets[arbitrum.id][asset]
       if (!marketAddress) continue
@@ -1108,7 +1198,7 @@ export default class PerennialAdapter implements IAdapterV1 {
         operationType: position.side === PositionSide.long ? 'Long' : 'Short', // TODO: this is a little loose..
         txHash: position.startTransactionHash,
         collateral: tokens['USDC.e'],
-        marketId: encodeMarketId(arbitrum.id.toString(), 'PERENNIAL', position.asset),
+        marketId: encodePerennialMarketId(position.asset),
         direction: (position.side === PositionSide.long ? 'LONG' : 'SHORT') as TradeDirection,
         sizeDelta: toAmountInfo(BigNumber.from(position.startSize), 6, true),
         marginDelta: toAmountInfo(BigNumber.from(position.startCollateral), 6, false),
@@ -1135,7 +1225,12 @@ export default class PerennialAdapter implements IAdapterV1 {
     const positions: PositionInfo[] = []
 
     for (const asset of userAssets) {
-      const positionPnl = await this._cachedActivePositionPnls({ asset, address, marketSnapshots, opts })
+      const positionPnl = await this._cachedActivePositionPnls({
+        asset,
+        address,
+        marketSnapshots,
+        opts
+      })
       const position = marketSnapshots.user[asset]
       const market = marketSnapshots.market[asset]
       if (
@@ -1166,7 +1261,7 @@ export default class PerennialAdapter implements IAdapterV1 {
 
       const positionInfo: PositionInfo = {
         protocolId: 'PERENNIAL',
-        marketId: encodeMarketId(arbitrum.id.toString(), 'PERENNIAL', asset),
+        marketId: encodePerennialMarketId(asset),
         posId: `${address}-${asset}`,
         size: toAmountInfo(BigNumber.from(position.nextMagnitude.toString()), 6, true),
         margin: toAmountInfo(BigNumber.from(position.local.collateral), 6, false),
@@ -1230,7 +1325,7 @@ export default class PerennialAdapter implements IAdapterV1 {
 
     for (const o of openOrderGraphData.openOrders) {
       for (const p of positionInfo) {
-        const { protocolMarketId } = decodeMarketId(p.marketId)
+        const protocolMarketId = decodePerennialMarketId(p.marketId)
         const orderMarket = addressToAsset(getAddress(o.market))
         if (protocolMarketId === orderMarket) {
           if (ordersForPositionInternal[p.posId] === undefined) {
@@ -1250,7 +1345,9 @@ export default class PerennialAdapter implements IAdapterV1 {
   /** Internal Methods */
   async _checkMarketFactoryApproval(wallet: string) {
     const account = getAddress(wallet)
-    const operatorApproved = await this.sdk.operator.read.marketFactoryApproval({ address: account })
+    const operatorApproved = await this.sdk.operator.read.marketFactoryApproval({
+      address: account
+    })
     return operatorApproved
   }
 
@@ -1304,7 +1401,12 @@ export default class PerennialAdapter implements IAdapterV1 {
 
     if (txData.data) {
       return {
-        tx: { to: txData.to, data: txData.data, value: BigNumber.from(txData.value), chainId: arbitrum.id },
+        tx: {
+          to: txData.to,
+          data: txData.data,
+          value: BigNumber.from(txData.value),
+          chainId: arbitrum.id
+        },
         desc: EMPTY_DESC,
         chainId: arbitrum.id,
         isUserAction: true,
@@ -1321,7 +1423,10 @@ export default class PerennialAdapter implements IAdapterV1 {
     const protocol: Protocol = {
       protocolId: 'PERENNIAL'
     }
-    const marketSnapshots = await this._cachedMarketSnapshots({ address: zeroAddress, opts })
+    const marketSnapshots = await this._cachedMarketSnapshots({
+      address: zeroAddress,
+      opts
+    })
     if (!marketSnapshots) {
       return {}
     }
@@ -1332,7 +1437,9 @@ export default class PerennialAdapter implements IAdapterV1 {
         return acc
       }
       const { asset } = market
-      const marketId = encodeMarketId(arbitrum.id.toString(), 'PERENNIAL', asset)
+      const rageAsset = assetToRageToken(asset)
+
+      const marketId = encodePerennialMarketId(rageAsset.symbol)
       const maxLeverage = calcMaxLeverage({
         margin: market.riskParameter.margin,
         minMargin: market.riskParameter.minMargin,
@@ -1347,9 +1454,9 @@ export default class PerennialAdapter implements IAdapterV1 {
 
       acc[marketId] = {
         marketId,
-        marketSymbol: AssetMetadata[asset as SupportedAsset].symbol,
+        marketSymbol: rageAsset.symbol,
         chain: arbitrumChain,
-        indexToken: assetToRageToken(asset),
+        indexToken: rageAsset,
         longCollateral: [PNL_COLLATERAL_TOKEN],
         shortCollateral: [PNL_COLLATERAL_TOKEN],
         supportedModes: {
@@ -1406,7 +1513,7 @@ export default class PerennialAdapter implements IAdapterV1 {
     address: Address
     opts?: ApiOpts
   }): Promise<MarketSnapshots | undefined> {
-    const sTime = getStaleTime(CACHE_DAY, opts)
+    const sTime = getStaleTime(30 * CACHE_SECOND, opts)
     const res = cacheFetch({
       key: [PERENNIAL_CACHE_PREFIX, address, 'marketSnapshots'],
       fn: async () => {
