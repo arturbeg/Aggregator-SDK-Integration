@@ -1290,7 +1290,7 @@ export default class PerennialAdapter implements IAdapterV1 {
         indexToken: assetToRageToken(asset),
         collateral: tokens['USDC.e'],
         accessibleMargin: toAmountInfo(BigNumber.from(position.local.collateral), 6, false), // TODO: Check this,
-        roe: FixedNumber.fromValue(positionPnl.realtimePercent, 6),
+        roe: FixedNumber.fromValue(realtimePnl < 0 ? -positionPnl.realtimePercent : positionPnl.realtimePercent, 6), // Perecent is returned as an abs value in the SDK
         metadata: ''
       }
 
