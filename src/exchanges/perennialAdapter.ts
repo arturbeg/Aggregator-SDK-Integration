@@ -14,14 +14,14 @@ import PerennialSDK, {
   calcTradeFee,
   MarketSnapshots,
   calcMaxLeverage,
-  interfaceFeeBps,
   chainAssetsWithAddress,
   OpenOrder,
   addressToAsset,
   Markets,
   KeeperOracleAbi,
   pythPriceToBig6,
-  BigOrZero
+  BigOrZero,
+  TriggerComparison
 } from '@perennial/sdk'
 
 import { IAdapterV1, ProtocolInfo } from '../../src/interfaces/V1/IAdapterV1'
@@ -293,8 +293,7 @@ export default class PerennialAdapter implements IAdapterV1 {
             orderDirection: positionSide,
             oraclePrice: latestPrice,
             positionDelta: Big6Math.abs(orderDelta),
-            calculatedFee: tradeFee.total,
-            positionFee: marketSnapshot?.parameter.positionFee ?? 0n
+            marketSnapshot
           })
         : { total: latestPrice, priceImpact: 0n, priceImpactPercentage: 0n }
 
@@ -328,8 +327,7 @@ export default class PerennialAdapter implements IAdapterV1 {
         errMsg = 'Order would exceed max leverage'
       }
 
-      const nonImpactTradeFee = Big6Math.mul(marketSnapshot.parameter.positionFee, tradeFee.total)
-      const totalNonImpactTradeFee = marketSnapshot.parameter.settlementFee + nonImpactTradeFee
+      const finalTradeFee = tradeFee.tradeFee + marketSnapshot.parameter.settlementFee
 
       tradePreviews.push({
         marketId: newOrder.marketId,
@@ -338,7 +336,7 @@ export default class PerennialAdapter implements IAdapterV1 {
         margin: toAmountInfo(BigNumber.from(newCollateral), 6, true),
         avgEntryPrice: FixedNumber.fromValue(estEntryPrice.total, 6),
         liqudationPrice: FixedNumber.fromValue(liquidationPrice, 6),
-        fee: FixedNumber.fromValue(totalNonImpactTradeFee, 6),
+        fee: FixedNumber.fromValue(finalTradeFee, 6),
         collateral: tokens['USDC.e'],
         isError,
         errMsg,
@@ -394,13 +392,14 @@ export default class PerennialAdapter implements IAdapterV1 {
       if (newLeverage > Big6Math.fromFloatString(maxLeverage.toString())) {
         errMsg = 'New position would exceed max leverage.'
       }
+      const finalTradeFee = tradeFee.tradeFee + marketSnapshot.parameter.settlementFee
 
       tradePreviews.push({
         marketId: ragePosition.marketId,
         leverage: FixedNumber.fromValue(newLeverage, 6),
         size: toAmountInfo(BigNumber.from(newPosition), 6, true),
         margin: toAmountInfo(BigNumber.from(userMarketSnapshot.local.collateral), 6, true),
-        fee: FixedNumber.fromValue(tradeFee.total, 6),
+        fee: FixedNumber.fromValue(finalTradeFee, 6),
         collateral: tokens['USDC.e'],
         avgEntryPrice: FixedNumber.fromValue(latestPrice, 6),
         liqudationPrice: FixedNumber.fromValue(liquidationPrice, 6),
@@ -636,6 +635,7 @@ export default class PerennialAdapter implements IAdapterV1 {
       const perennialMarketId = decodePerennialMarketId(market)
       const account = getAddress(wallet)
       const marketSnapshots = await this._cachedMarketSnapshots({ address: account })
+      if (!marketSnapshots || !marketSnapshots.user) throw new Error('No market data')
       const approveOperatorTx = await this._approveMarketFactory(wallet)
       if (approveOperatorTx) {
         txs.push(approveOperatorTx)
@@ -666,7 +666,8 @@ export default class PerennialAdapter implements IAdapterV1 {
       const txData = await this.sdk.markets.build.modifyPosition({
         collateralDelta: Big6Math.fromFloatString(amount.toString()),
         marketAddress: productAddress,
-        address: account
+        address: account,
+        positionSide: marketSnapshots.user[perennialMarketId as SupportedAsset].nextSide
       })
 
       if (txData?.data) {
@@ -695,6 +696,10 @@ export default class PerennialAdapter implements IAdapterV1 {
     for (const param of params) {
       const { protocol, chainId, amount, token, wallet, market } = param
       if (!market) throw new Error('invalid market id')
+      const account = getAddress(wallet)
+      const marketSnapshots = await this._cachedMarketSnapshots({ address: account })
+      if (!marketSnapshots || !marketSnapshots.user) throw new Error('No market data')
+
       const perennialMarketId = decodePerennialMarketId(market)
       const productAddress = ChainMarkets[arbitrum.id][perennialMarketId as SupportedAsset]
       if (protocol !== 'PERENNIAL') throw new Error('invalid protocol id')
@@ -704,7 +709,8 @@ export default class PerennialAdapter implements IAdapterV1 {
       const withdrawTxData = await this.sdk.markets.build.modifyPosition({
         collateralDelta: Big6Math.fromFloatString((-amount).toString()),
         address: getAddress(wallet),
-        marketAddress: productAddress
+        marketAddress: productAddress,
+        positionSide: marketSnapshots.user[perennialMarketId as SupportedAsset].nextSide
       })
 
       if (withdrawTxData?.data) {
@@ -801,8 +807,17 @@ export default class PerennialAdapter implements IAdapterV1 {
             positionSide,
             positionAbs,
             collateralDelta: remainingMarginDelta.toFormat(6).value,
-            interfaceFeeRate: interfaceFeeBps,
-            settlementFee: marketSnapshot?.parameter.settlementFee ?? 0n,
+            interfaceFee: {
+              // Note: You can calculate the interface fee using the following format.
+              unwrap: true,
+              amount: 0n,
+              receiver: zeroAddress
+            },
+            referralFee: {
+              unwrap: true,
+              amount: 0n,
+              receiver: zeroAddress
+            },
             address: account,
             marketAddress: productAddress,
             marketSnapshots,
@@ -812,14 +827,14 @@ export default class PerennialAdapter implements IAdapterV1 {
           positionChangeTxData = await this.sdk.markets.build.placeOrder({
             orderType: OrderTypes.limit,
             side: positionSide,
-            positionAbs,
             delta: sizeDelta.amount.toFormat(6).value,
             collateralDelta: remainingMarginDelta.toFormat(6).value,
             limitPrice: order.triggerData?.triggerPrice.toFormat(6).value,
             address: account,
             marketAddress: productAddress,
             marketSnapshots,
-            marketOracles
+            marketOracles,
+            triggerComparison: positionSide === PositionSide.long ? TriggerComparison.lte : TriggerComparison.gte
           })
         }
 
@@ -929,34 +944,17 @@ export default class PerennialAdapter implements IAdapterV1 {
       const orderToUpdate = openOrderGraphData?.openOrders.find((o) => o.nonce === order.orderId)
       if (!orderToUpdate) throw new Error('Order not found')
       // Cancel and replace.
-      const cancelOrderTxData = await this.sdk.markets.build.cancelOrder([[marketAddress, BigInt(orderToUpdate.nonce)]])
-      if (!cancelOrderTxData.data) throw new Error('Invalid cancel order data')
-
-      const cancelOrder = {
-        tx: {
-          to: cancelOrderTxData.to,
-          data: cancelOrderTxData.data,
-          value: BigNumber.from(cancelOrderTxData.value),
-          chainId: arbitrum.id
-        },
-        desc: EMPTY_DESC,
-        chainId: arbitrum.id,
-        isUserAction: true,
-        isAgentRequired: false,
-        heading: 'Perennial Cancel Order',
-        ethRequired: BigNumber.from(0)
-      }
-
-      // TODO: check newOrderSize calc:
       const newOrderSize = BigInt(orderToUpdate.order_delta) + order.sizeDelta.amount.toFormat(6).value
+      const newOrderDirection = order.direction === 'LONG' ? PositionSide.long : PositionSide.short
       const replaceOrderTxData = await this.sdk.markets.build.placeOrder({
-        side: order.direction === 'LONG' ? PositionSide.long : PositionSide.short,
+        side: newOrderDirection,
         orderType: OrderTypes.limit,
-        positionAbs: newOrderSize,
-        delta: order.sizeDelta.amount.toFormat(6).value,
+        delta: newOrderSize,
         limitPrice: order.triggerData?.triggerPrice.toFormat(6).value ?? BigInt(orderToUpdate.order_price),
         address: account,
-        marketAddress: marketAddress
+        marketAddress: marketAddress,
+        triggerComparison: newOrderDirection === PositionSide.long ? TriggerComparison.lte : TriggerComparison.gte,
+        cancelOrderDetails: [{ market: marketAddress, nonce: BigInt(orderToUpdate.nonce) }]
       })
 
       if (!replaceOrderTxData?.data) throw new Error('Invalid replace order data')
@@ -976,7 +974,6 @@ export default class PerennialAdapter implements IAdapterV1 {
         ethRequired: BigNumber.from(0)
       }
 
-      txs.push(cancelOrder)
       txs.push(replaceOrder)
     }
     return txs
@@ -989,7 +986,9 @@ export default class PerennialAdapter implements IAdapterV1 {
       const protocolMarketId = decodePerennialMarketId(marketId)
       const productAddress = ChainMarkets[arbitrum.id][protocolMarketId as SupportedAsset]
       if (!productAddress) throw new Error('Invalid market id')
-      const cancelOrderTxData = await this.sdk.markets.build.cancelOrder([[productAddress, BigInt(orderId)]])
+      const cancelOrderTxData = await this.sdk.markets.build.cancelOrder({
+        orderDetails: [{ market: productAddress, nonce: BigInt(orderId) }]
+      })
 
       if (!cancelOrderTxData?.data) {
         throw new Error('Invalid cancel order data')
@@ -1047,7 +1046,8 @@ export default class PerennialAdapter implements IAdapterV1 {
       const positionChangeTxData = await this.sdk.markets.build.modifyPosition({
         collateralDelta,
         address: account,
-        marketAddress: productAddress
+        marketAddress: productAddress,
+        positionSide: userPositionData.nextSide
       })
 
       if (!positionChangeTxData?.data) {

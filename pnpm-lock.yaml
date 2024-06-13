@@ -18,8 +18,8 @@ dependencies:
     specifier: ./sdk
     version: link:sdk
   '@perennial/sdk':
-    specifier: 0.0.1-beta12
-    version: 0.0.1-beta12(typescript@5.3.2)
+    specifier: 0.0.1-beta22
+    version: 0.0.1-beta22(typescript@5.3.2)
   '@pythnetwork/client':
     specifier: ^2.19.0
     version: 2.19.0(@solana/web3.js@1.87.6)
@@ -501,6 +501,10 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
+  /@microsoft/tsdoc@0.14.2:
+    resolution: {integrity: sha512-9b8mPpKrfeGRuhFH5iO1iwCLeIIsV6+H1sRfxbkoGXIyQE2BTsPd9zqSqQJ+pv5sJ/hT5M1zvOFL02MnEezFug==}
+    dev: false
+
   /@noble/curves@1.0.0:
     resolution: {integrity: sha512-2upgEu0iLiDVDZkNLeFV2+ht0BAVgQnEmCk6JsOch9Rp8xfkMCbvbAZlA2pBHQc73dbl+vFOXfqkf4uemdn0bw==}
     dependencies:
@@ -553,9 +557,10 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@perennial/sdk@0.0.1-beta12(typescript@5.3.2):
-    resolution: {integrity: sha512-15uSdTEEZDnu7zxYAfFy34nExpwTi+Rpfukkqkgt0zmVyICpMbn4Uf3Yqf16dl1+PTSfEFfXFhmVwtKUR0yZlA==}
+  /@perennial/sdk@0.0.1-beta22(typescript@5.3.2):
+    resolution: {integrity: sha512-wMAvQexTPN+gQ8wWOulKYzyjTDPJjqotuJBwyU3Ai7S20/9zabQZv0qz+rQltu3O65KRTf0n7UjIuroTmoHWdA==}
     dependencies:
+      '@microsoft/tsdoc': 0.14.2
       '@perennial/pyth-evm-js': 1.32.0-fork4
       date-fns: 2.30.0
       graphql: 16.8.1
