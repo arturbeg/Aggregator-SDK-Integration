@@ -135,7 +135,7 @@ const formatOpenOrderToOrderInfo = (order: OpenOrder) => {
     mode: 'ISOLATED' as MarketMode,
     tif: undefined,
     protocolId: 'PERENNIAL' as ProtocolId,
-    collateral: tokens['USDC.e'],
+    collateral: tokens['USDC'],
     orderId: order.nonce.toString(),
     direction: order.order_side === 1 ? ('LONG' as TradeDirection) : ('SHORT' as TradeDirection),
     size: toAmountInfo(BigNumber.from(Big6Math.abs(Big6Math.fromFloatString(order.order_delta))), 6, true),
@@ -337,7 +337,7 @@ export default class PerennialAdapter implements IAdapterV1 {
         avgEntryPrice: FixedNumber.fromValue(estEntryPrice.total, 6),
         liqudationPrice: FixedNumber.fromValue(liquidationPrice, 6),
         fee: FixedNumber.fromValue(finalTradeFee, 6),
-        collateral: tokens['USDC.e'],
+        collateral: tokens['USDC'],
         isError,
         errMsg,
         priceImpact: FixedNumber.fromValue(estEntryPrice.priceImpactPercentage * 100n, 6)
@@ -400,7 +400,7 @@ export default class PerennialAdapter implements IAdapterV1 {
         size: toAmountInfo(BigNumber.from(newPosition), 6, true),
         margin: toAmountInfo(BigNumber.from(userMarketSnapshot.local.collateral), 6, true),
         fee: FixedNumber.fromValue(finalTradeFee, 6),
-        collateral: tokens['USDC.e'],
+        collateral: tokens['USDC'],
         avgEntryPrice: FixedNumber.fromValue(latestPrice, 6),
         liqudationPrice: FixedNumber.fromValue(liquidationPrice, 6),
         isError: !!errMsg,
@@ -457,7 +457,7 @@ export default class PerennialAdapter implements IAdapterV1 {
         size: toAmountInfo(BigNumber.from(userMarketSnapshot.nextMagnitude), 6, true),
         margin: toAmountInfo(BigNumber.from(newCollateral), 6, true),
         liqudationPrice: FixedNumber.fromValue(liquidationPrice, 6),
-        collateral: tokens['USDC.e'],
+        collateral: tokens['USDC'],
         avgEntryPrice: FixedNumber.fromValue(latestPrice, 6),
         fee: FixedNumber.fromValue(0, 6),
         isError,
@@ -597,7 +597,7 @@ export default class PerennialAdapter implements IAdapterV1 {
         liqudationLeverage: FixedNumber.fromString('100'), // TODO: Calculate leverage at time of liquidation
         liquidationPrice: FixedNumber.fromValue(liquidationTx.priceWithImpact, 6),
         txHash: liquidationTx.transactionHash,
-        collateral: tokens['USDC.e'],
+        collateral: tokens['USDC'],
         id: liquidationTx.transactionHash
       })
     }
@@ -1085,7 +1085,7 @@ export default class PerennialAdapter implements IAdapterV1 {
       collateralUsesLimitPricing: false,
       depositData: {
         10: [],
-        42161: [tokens['USDC.e']]
+        42161: [tokens['USDC']]
       }
     }
     return info
@@ -1201,7 +1201,7 @@ export default class PerennialAdapter implements IAdapterV1 {
         positionFee: FixedNumber.fromValue(position.positionFees, 6),
         operationType: position.side === PositionSide.long ? 'Long' : 'Short', // TODO: this is a little loose..
         txHash: position.startTransactionHash,
-        collateral: tokens['USDC.e'],
+        collateral: tokens['USDC'],
         marketId: encodePerennialMarketId(position.asset),
         direction: (position.side === PositionSide.long ? 'LONG' : 'SHORT') as TradeDirection,
         sizeDelta: toAmountInfo(BigNumber.from(position.startSize), 6, true),
@@ -1288,7 +1288,7 @@ export default class PerennialAdapter implements IAdapterV1 {
         cumulativeFunding,
         leverage: FixedNumber.fromValue(position.nextLeverage, 6),
         indexToken: assetToRageToken(asset),
-        collateral: tokens['USDC.e'],
+        collateral: tokens['USDC'],
         accessibleMargin: toAmountInfo(BigNumber.from(position.local.collateral), 6, false), // TODO: Check this,
         roe: FixedNumber.fromValue(realtimePnl < 0 ? -positionPnl.realtimePercent : positionPnl.realtimePercent, 6), // Perecent is returned as an abs value in the SDK
         metadata: ''
