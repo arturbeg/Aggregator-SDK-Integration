@@ -77,7 +77,7 @@ export type OrderAction = 'CREATE' | 'UPDATE' | 'CANCEL'
 /**
  * Represents the protocol ID.
  */
-export type ProtocolId = 'GMXV2' | 'HL' | 'AEVO' | 'DYDXV4' | 'SYNFUTURES' | 'PERENNIAL' | 'ORDERLY'
+export type ProtocolId = 'GMXV2' | 'HL' | 'AEVO' | 'DYDXV4' | 'SYNFUTURES' | 'PERENNIAL' | 'ORDERLY' | 'REYA'
 
 /**
  * Represents the type of trade operation.
@@ -656,7 +656,12 @@ export type AccountInfoData<T extends ProtocolId> = T extends 'GMXV2'
                   withdrawable: FixedNumber
                 }[]
               }
-            : never
+            : T extends 'REYA'
+              ? {
+                  accountEquity: FixedNumber // The equity of the account.
+                  availableToTrade: FixedNumber // The amount available for trading.
+                }
+              : never
 
 /**
  * Represents account information.
