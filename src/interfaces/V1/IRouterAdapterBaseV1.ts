@@ -602,7 +602,9 @@ type StoredCollateralData<T extends ProtocolId> = T extends 'GMXV2' | 'HL'
     ? Awaited<ReturnType<(typeof AevoClient)['prototype']['privateApi']['getAccount']>>['collaterals']
     : T extends 'SYNFUTURES'
       ? Array<{ token: Token; amount: FixedNumber }>
-      : never
+      : T extends 'REYA'
+        ? Array<{ token: string; amount: FixedNumber }>
+        : never
 
 /**
  * Represents account information per protocol.
@@ -660,6 +662,7 @@ export type AccountInfoData<T extends ProtocolId> = T extends 'GMXV2'
               ? {
                   accountEquity: FixedNumber // The equity of the account.
                   availableToTrade: FixedNumber // The amount available for trading.
+                  storedCollateral: StoredCollateralData<'REYA'>
                 }
               : never
 

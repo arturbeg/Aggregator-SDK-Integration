@@ -29,6 +29,7 @@ import {
   reyaCacheGetAllMarkets,
   reyaCacheGetLiquidationHistory,
   reyaCacheGetMarginAccount,
+  reyaCacheGetMaxExposure,
   reyaCacheGetTradeHistory
 } from '../configs/reya/reyaCacheHelper'
 import {
@@ -195,13 +196,17 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       sTimeMarkets * CACHE_TIME_MULT,
       opts
     )
-    // @todo update withdrawable and availableToTrade
     const accountInfo: AccountInfo = {
       protocolId: 'REYA',
       accountInfoData: {
         accountEquity: FixedNumber.fromString(String(marginAccount.totalBalanceWithHaircut)),
-        withdrawable: FixedNumber.fromString(String(marginAccount.totalBalanceWithHaircut)),
-        availableToTrade: FixedNumber.fromString(String(marginAccount.totalBalanceWithHaircut))
+        availableToTrade: FixedNumber.fromString(
+          String(marginAccount.totalBalanceWithHaircut - marginAccount.liquidationMarginRequirement)
+        ),
+        storedCollateral: marginAccount.collaterals.map((c) => ({
+          token: c.token,
+          amount: FixedNumber.fromValue(c.balance)
+        }))
       }
     }
 
@@ -323,13 +328,6 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       sTimeMarkets * CACHE_TIME_MULT,
       opts
     )
-    // @TODO UPDATE
-    const leverages = [
-      {
-        marketId: 1,
-        leverage: '1'
-      }
-    ]
     const perpPositions: PositionEntity[] = marginAccount.positions
 
     for (let i = 0; i < perpPositions.length; i++) {
@@ -337,7 +335,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       const marketId = encodeMarketId(reya.id.toString(), this.protocolId, pos.market.quoteToken)
       const posSize = FixedNumber.fromString(String(pos.base))
       const posNtl = posSize.mulFN(FixedNumber.fromString(String(pos.market.markPrice)))
-      const leverage = FixedNumber.fromString(leverages.find((l) => l.marketId === pos.market.id)!.leverage)
+      const leverage = posNtl.abs().div(FixedNumber.fromValue(marginAccount.totalBalanceWithHaircut))
       const marginUsed = posNtl.divFN(leverage)
       const direction = pos.side == 'long' ? 'LONG' : 'SHORT'
 
@@ -385,7 +383,10 @@ export class ReyaAdapterV1 implements IAdapterV1 {
   ): Promise<AmountInfo> {
     const sTimeAccount = getStaleTime(CACHE_SECOND * 3, opts)
     const acccountData = await reyaCacheGetMarginAccount(this.marginAccountId, sTimeAccount, sTimeAccount, opts)
-    return toAmountInfoFN(FixedNumber.fromValue(acccountData.totalBalanceWithHaircut), false) // @todo update to use available balance
+    return toAmountInfoFN(
+      FixedNumber.fromValue(acccountData.totalBalanceWithHaircut - acccountData.liquidationMarginRequirement),
+      false
+    )
   }
 
   getClaimHistory(
@@ -479,19 +480,20 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     const dynamicMarketMetadata: DynamicMarketMetadata[] = []
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
     const markets = await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
-
+    const maxExposures = await reyaCacheGetMaxExposure(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
     for (let i = 0; i < marketIds.length; i++) {
       const mId = marketIds[i]
       const asset = reyaMarketIdToAsset(mId)
       const marketEntity = markets.find((cg) => cg.quoteToken === asset)
-
       if (marketEntity) {
+        const maxExposureLong = maxExposures.find((m) => m.marketId === marketEntity.id && m.type === 'long')
+        const maxExposureShort = maxExposures.find((m) => m.marketId === marketEntity.id && m.type === 'short')
         dynamicMarketMetadata.push({
           oiLong: FixedNumber.fromValue(marketEntity.longOI).mul(FixedNumber.fromValue(marketEntity.markPrice)),
           oiShort: FixedNumber.fromValue(marketEntity.shortOI).mul(FixedNumber.fromValue(marketEntity.markPrice)),
-          isOiBifurcated: false, // @todo check this value
-          availableLiquidityLong: FixedNumber.fromValue('0'), // @todo update values
-          availableLiquidityShort: FixedNumber.fromValue('0'), // @todo update values
+          isOiBifurcated: true,
+          availableLiquidityLong: FixedNumber.fromValue(maxExposureLong?.maxAmountSize || 0),
+          availableLiquidityShort: FixedNumber.fromValue(maxExposureShort?.maxAmountSize || 0),
           longFundingRate: FixedNumber.fromValue(marketEntity.fundingRateAnnualized).mulFN(
             FixedNumber.fromString('-1')
           ),
@@ -562,7 +564,6 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       return market ? FixedNumber.fromString(String(market.markPrice)) : ZERO_FN
     })
   }
-
   async getMarketState(wallet: string, marketIds: string[], opts?: ApiOpts | undefined): Promise<MarketState[]> {
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
     await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
@@ -571,26 +572,21 @@ export class ReyaAdapterV1 implements IAdapterV1 {
 
     const sTimeAccount = getStaleTime(CACHE_SECOND * 3, opts)
     const acccountData = await reyaCacheGetMarginAccount(this.marginAccountId, sTimeAccount, sTimeAccount, opts)
-    // const leverages = acccountData.leverages
-    // @todo Update!!
-    const leverages = [
-      {
-        instrument_id: 'BTC',
-        leverage: 1.5
-      }
-    ]
-    if (!leverages) throw new Error('leverages not found')
-
     for (let i = 0; i < marketIds.length; i++) {
       const mId = marketIds[i]
       const asset = reyaMarketIdToAsset(mId)
-      const lev = leverages.find((l) => l.instrument_id == REYA_TOKENS_MAP[asset].symbol)
+      let lev = ZERO_FN
+      const position = acccountData.positions.find((p) => p.market.quoteToken === asset)
 
-      if (!lev) throw new Error('leverage not found')
+      if (position) {
+        lev = FixedNumber.fromValue(position.size)
+          .abs()
+          .div(FixedNumber.fromValue(acccountData.totalBalanceWithHaircut))
+      }
 
       const marketState: MarketState = {
         marketMode: 'CROSS',
-        leverage: FixedNumber.fromString(String(lev.leverage)) // get leverage per marker
+        leverage: FixedNumber.fromString(String(lev)) // get leverage per marker
       }
       marketStates.push(marketState)
     }
