@@ -19,6 +19,56 @@ export async function reyaCacheGetAllMarkets(staleTime: number, cacheTime: numbe
   return allMarkets
 }
 
+export async function reyaCacheGetMaxExposure(staleTime: number, cacheTime: number, opts?: ApiOpts) {
+  const allMarkets: GetMarketsResult = await cacheFetch({
+    key: [REYA_CACHE_PREFIX, 'marketexposure'],
+    fn: () => ApiClient.markets.getMarkets(),
+    staleTime: staleTime,
+    cacheTime: cacheTime,
+    opts
+  })
+
+  const maxExposures = []
+  for (const market of allMarkets) {
+    const exposureLong = await cacheFetch({
+      key: [REYA_CACHE_PREFIX, `marketexposure_long_${market.id}`],
+      fn: () =>
+        ApiClient.account.getMaxOrderSizeAvailable({
+          marketId: market.id,
+          marginAccountId: 2,
+          direction: 'long'
+        }),
+      staleTime: staleTime,
+      cacheTime: cacheTime,
+      opts
+    })
+    const exposureshort = await cacheFetch({
+      key: [REYA_CACHE_PREFIX, `marketexposure_short_${market.id}`],
+      fn: () =>
+        ApiClient.account.getMaxOrderSizeAvailable({
+          marketId: market.id,
+          marginAccountId: 2,
+          direction: 'long'
+        }),
+      staleTime: staleTime,
+      cacheTime: cacheTime,
+      opts
+    })
+    maxExposures.push({
+      ...exposureLong,
+      type: 'long',
+      marketId: market.id
+    })
+    maxExposures.push({
+      ...exposureshort,
+      type: 'short',
+      marketId: market.id
+    })
+  }
+
+  return maxExposures
+}
+
 export async function reyaCacheGetMarginAccount(
   marginAccountId: number,
   staleTime: number,

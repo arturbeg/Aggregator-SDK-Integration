@@ -27,19 +27,19 @@ dependencies:
     version: 0.0.1-beta29(typescript@5.5.4)(zod@3.23.8)
   '@pythnetwork/client':
     specifier: ^2.21.0
-    version: 2.21.1(@solana/web3.js@1.95.2)
+    version: 2.21.1(@solana/web3.js@1.95.3)
   '@pythnetwork/price-service-client':
     specifier: ^1.9.0
     version: 1.9.0
   '@reyaxyz/api-sdk':
-    specifier: ^0.114.3
-    version: 0.114.3
+    specifier: ^0.120.1
+    version: 0.120.1
   '@reyaxyz/common':
-    specifier: ^0.171.0
-    version: 0.171.0
+    specifier: ^0.186.0
+    version: 0.186.0
   '@reyaxyz/sdk':
-    specifier: ^0.106.44
-    version: 0.106.44
+    specifier: ^0.106.64
+    version: 0.106.64
   '@synfutures/oyster-sdk':
     specifier: 0.1.11
     version: 0.1.11
@@ -203,13 +203,13 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@coral-xyz/borsh@0.28.0(@solana/web3.js@1.95.2):
+  /@coral-xyz/borsh@0.28.0(@solana/web3.js@1.95.3):
     resolution: {integrity: sha512-/u1VTzw7XooK7rqeD7JLUSwOyRSesPUk0U37BV9zK0axJc1q0nRbKFGFLYCQ16OtdOJTTwGfGp11Lx9B45bRCQ==}
     engines: {node: '>=10'}
     peerDependencies:
       '@solana/web3.js': ^1.68.0
     dependencies:
-      '@solana/web3.js': 1.95.2
+      '@solana/web3.js': 1.95.3
       bn.js: 5.2.1
       buffer-layout: 1.2.2
     dev: false
@@ -282,8 +282,8 @@ packages:
     resolution: {integrity: sha512-davcyYziBhkzfXQTu1l5NrpDYv0K9GekZCC9apBRvL1dvMc9F/ygM7iemHjUA+z8tJkxKxrt/YPjJ6XNHzLrkw==}
     dependencies:
       '@cosmjs/stream': 0.32.4
-      isomorphic-ws: 4.0.1(ws@7.5.10)
-      ws: 7.5.10
+      isomorphic-ws: 4.0.1(ws@7.4.6)
+      ws: 7.4.6
       xstream: 11.14.0
     transitivePeerDependencies:
       - bufferutil
@@ -912,6 +912,12 @@ packages:
       '@noble/hashes': 1.4.0
     dev: false
 
+  /@noble/curves@1.5.0:
+    resolution: {integrity: sha512-J5EKamIHnKPyClwVrzmaf5wSdQXgdHcPZIZLu3bwnbeCx8/7NPK5q2ZBWF+5FvYGByjiQQsJYX6jfgB2wDPn3A==}
+    dependencies:
+      '@noble/hashes': 1.4.0
+    dev: false
+
   /@noble/hashes@1.3.2:
     resolution: {integrity: sha512-MVC8EAQp7MvEcm30KWENFjgR+Mkmf+D189XJTkFIlwohU5hcBbn1ZkKq7KVTi2Hme3PMGF390DaL52beVrIihQ==}
     engines: {node: '>= 16'}
@@ -1019,14 +1025,14 @@ packages:
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
     dev: false
 
-  /@pythnetwork/client@2.21.1(@solana/web3.js@1.95.2):
+  /@pythnetwork/client@2.21.1(@solana/web3.js@1.95.3):
     resolution: {integrity: sha512-nSpI1qjmbyrFTetfJSDqjzT+AAJYG3xUmDYFnExAFrnhiO5C8FPvMw1zkSYXWRvEwHFISKJLsn1sTIqU9ifaCA==}
     peerDependencies:
       '@solana/web3.js': ^1.30.2
     dependencies:
       '@coral-xyz/anchor': 0.29.0
-      '@coral-xyz/borsh': 0.28.0(@solana/web3.js@1.95.2)
-      '@solana/web3.js': 1.95.2
+      '@coral-xyz/borsh': 0.28.0(@solana/web3.js@1.95.3)
+      '@solana/web3.js': 1.95.3
       buffer: 6.0.3
     transitivePeerDependencies:
       - bufferutil
@@ -1067,10 +1073,13 @@ packages:
       bn.js: 5.2.1
     dev: false
 
-  /@reyaxyz/api-sdk@0.114.3:
-    resolution: {integrity: sha512-ONxg6QV8rQ8OdSDA6oGIZBfPXDw/lZ2UCsvUHeLqptBmyYTmrIX/TxsNjp9sxP4JWSZMSPFPIvDTEOjb4ExMig==}
+  /@reyaxyz/api-sdk@0.120.1:
+    resolution: {integrity: sha512-GJZxYBaE7YxxPd7sovXIPGHEl8rlaZPOw0daonom+vZoEFX9VDkMuKsEmRfP7xsBIAmwsBO8PsAZj2X4/4seOg==}
     dependencies:
-      '@reyaxyz/common': 0.175.0
+      '@reyaxyz/common': 0.186.0
+      '@simplewebauthn/browser': 10.0.0
+      '@simplewebauthn/types': 10.0.0
+      axios: 1.7.4
       bignumber.js: 9.1.2
       ethers: 6.9.0
       isomorphic-ws: 5.0.0(ws@8.18.0)
@@ -1081,10 +1090,10 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@reyaxyz/common@0.171.0:
-    resolution: {integrity: sha512-ljF5Xws/XjsLk//y1FzqpUpjbnqvmx5p6HHY1GXf8lBmYDQn4mDp+o5dzQRhJ+hZ0lxkitpD924qHIXAwLn53A==}
+  /@reyaxyz/common@0.186.0:
+    resolution: {integrity: sha512-qjf+XvMLn2eNyakfNqBKVBKXT4//WDtXzBTYjc7QCQAFPTpOE5000746Z8cPF1PpY6YVH5IVQvo3HChEF8ohEg==}
     dependencies:
-      axios: 1.7.2
+      axios: 1.7.4
       bignumber.js: 9.1.2
       ethers: 6.9.0
       ethers-decode-error: 2.1.3(ethers@6.9.0)
@@ -1095,24 +1104,11 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@reyaxyz/common@0.175.0:
-    resolution: {integrity: sha512-MGLXpK84VE+xKolRM6QaSFhMdzwQ5rpiEoidc4MAPcifSZ5XtHiC8inSwYyNjD1MaHkO1RSsDzEw0ij/ekHrRA==}
+  /@reyaxyz/sdk@0.106.64:
+    resolution: {integrity: sha512-OaislhX049j4MNjlNjUMu6C0ljl7ny8EO/RzpbSymRYq1KqtvmQLoonuF0LOdjJRz4mynfHdsCwapv99RQM1wg==}
     dependencies:
-      axios: 1.7.2
-      bignumber.js: 9.1.2
-      ethers: 6.9.0
-      ethers-decode-error: 2.1.3(ethers@6.9.0)
-      lodash.clonedeep: 4.5.0
-    transitivePeerDependencies:
-      - bufferutil
-      - debug
-      - utf-8-validate
-    dev: false
-
-  /@reyaxyz/sdk@0.106.44:
-    resolution: {integrity: sha512-XyIr/6pm7QEorlFHCpN1Sq8ch5VLty4eb87e9voeiNru7zb5ST/5KKx52iLWL9gXjeNjCBrh2gwsbLQIpNoGmQ==}
-    dependencies:
-      '@reyaxyz/common': 0.171.0
+      '@reyaxyz/common': 0.186.0
+      axios: 1.7.4
       bignumber.js: 9.1.2
       ethers: 6.9.0
     transitivePeerDependencies:
@@ -1155,6 +1151,16 @@ packages:
       '@scure/base': 1.1.7
     dev: false
 
+  /@simplewebauthn/browser@10.0.0:
+    resolution: {integrity: sha512-hG0JMZD+LiLUbpQcAjS4d+t4gbprE/dLYop/CkE01ugU/9sKXflxV5s0DRjdz3uNMFecatRfb4ZLG3XvF8m5zg==}
+    dependencies:
+      '@simplewebauthn/types': 10.0.0
+    dev: false
+
+  /@simplewebauthn/types@10.0.0:
+    resolution: {integrity: sha512-SFXke7xkgPRowY2E+8djKbdEznTVnD5R6GO7GPTthpHrokLvNKw8C3lFZypTxLI7KkCfGPfhtqB3d7OVGGa9jQ==}
+    dev: false
+
   /@solana/buffer-layout@4.0.1:
     resolution: {integrity: sha512-E1ImOIAD1tBZFRdjeM4/pzTiTApC0AOBGwyAMS4fwIodCWArzJ3DWdoh8cKxeFM2fElkxBh2Aqts1BPC373rHA==}
     engines: {node: '>=5.10'}
@@ -1166,7 +1172,31 @@ packages:
     resolution: {integrity: sha512-SjlHp0G4qhuhkQQc+YXdGkI8EerCqwxvgytMgBpzMUQTafrkNant3e7pgilBGgjy/iM40ICvWBLgASTPMrQU7w==}
     dependencies:
       '@babel/runtime': 7.25.0
-      '@noble/curves': 1.4.2
+      '@noble/curves': 1.5.0
+      '@noble/hashes': 1.4.0
+      '@solana/buffer-layout': 4.0.1
+      agentkeepalive: 4.5.0
+      bigint-buffer: 1.1.5
+      bn.js: 5.2.1
+      borsh: 0.7.0
+      bs58: 4.0.1
+      buffer: 6.0.3
+      fast-stable-stringify: 1.0.0
+      jayson: 4.1.1
+      node-fetch: 2.7.0
+      rpc-websockets: 9.0.2
+      superstruct: 2.0.2
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - utf-8-validate
+    dev: false
+
+  /@solana/web3.js@1.95.3:
+    resolution: {integrity: sha512-O6rPUN0w2fkNqx/Z3QJMB9L225Ex10PRDH8bTaIUPZXMPV0QP8ZpPvjQnXK+upUczlRgzHzd6SjKIha1p+I6og==}
+    dependencies:
+      '@babel/runtime': 7.25.0
+      '@noble/curves': 1.5.0
       '@noble/hashes': 1.4.0
       '@solana/buffer-layout': 4.0.1
       agentkeepalive: 4.5.0
@@ -1647,6 +1677,16 @@ packages:
 
   /axios@1.7.2:
     resolution: {integrity: sha512-2A8QhOMrbomlDuiLeK9XibIBzuHeRcqqNOHp0Cyp5EoJ1IFDh+XZH3A6BkXtv0K4gFGCI0Y4BM7B1wOEi0Rmgw==}
+    dependencies:
+      follow-redirects: 1.15.6
+      form-data: 4.0.0
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+    dev: false
+
+  /axios@1.7.4:
+    resolution: {integrity: sha512-DukmaFRnY6AzAALSH4J2M3k6PkaC+MfaAGdEERRWcC9q3/TWQwLpHR8ZRLKTdQ3aBDL64EdluRDjJqKw+BPZEw==}
     dependencies:
       follow-redirects: 1.15.6
       form-data: 4.0.0
@@ -2660,7 +2700,7 @@ packages:
   /gas-price-oracle@0.5.1:
     resolution: {integrity: sha512-Jb1w127I0wSRKQNqNUE61bQInbJzbyaapAlFjRgtYOTVHOJ+3VZuKPt0dyz5Mo40Ax5I7Z+rB6vQmTIQHLnt9Q==}
     dependencies:
-      axios: 1.7.2
+      axios: 1.7.4
       bignumber.js: 9.1.2
       node-cache: 5.1.2
     transitivePeerDependencies:
@@ -3032,6 +3072,14 @@ packages:
   /isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
     dev: true
+
+  /isomorphic-ws@4.0.1(ws@7.4.6):
+    resolution: {integrity: sha512-BhBvN2MBpWTaSHdWRb/bwdZJ1WaehQ2L1KngkCkfLUGF0mAWAT1sQUQacEmQ0jXkFw/czDXPNQSL5u2/Krsz1w==}
+    peerDependencies:
+      ws: '*'
+    dependencies:
+      ws: 7.4.6
+    dev: false
 
   /isomorphic-ws@4.0.1(ws@7.5.10):
     resolution: {integrity: sha512-BhBvN2MBpWTaSHdWRb/bwdZJ1WaehQ2L1KngkCkfLUGF0mAWAT1sQUQacEmQ0jXkFw/czDXPNQSL5u2/Krsz1w==}
