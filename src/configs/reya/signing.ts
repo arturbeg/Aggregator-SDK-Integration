@@ -20,6 +20,7 @@ import type {
   TransactionRequest,
   TransactionResponse
 } from 'ethers-v6'
+import { ethers } from 'ethers-v6'
 import type { WalletClient } from 'viem'
 import type { blast } from 'viem/chains'
 import { arbitrum, optimism } from 'viem/chains'
@@ -83,7 +84,10 @@ export function signApproveAndDeposit(
 ): RequestSignerFnWithMetadata {
   return {
     fn: async (wallet: WalletClient) => {
-      const signer: Signer = new ViemSigner(wallet) as Signer
+      const provider = ethers.getDefaultProvider(
+        chainId === optimism.id ? 'https://mainnet.optimism.io' : 'https://arb1.arbitrum.io/rpc'
+      )
+      const signer: Signer = new ViemSigner(wallet, provider) as Signer
       const token = tokenAddress[chainId === arbitrum.id ? arbitrum.id : optimism.id] as Lowercase<string>
       const tokenAllowance = await getAllowance({
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -291,6 +295,19 @@ export function signUpdateOrder(
   }
 }
 
+function adaptToViemTransaction(tx: TransactionRequest): any {
+  return {
+    to: tx.to as `0x${string}` | null,
+    data: tx.data as `0x${string}`,
+    type: 'eip1559',
+    gas: tx.gasLimit ? BigInt(tx.gasLimit.toString()) : undefined,
+    nonce: tx.nonce,
+    value: tx.value ? BigInt(tx.value.toString()) : undefined,
+    maxFeePerGas: tx.maxFeePerGas ? BigInt(tx.maxFeePerGas.toString()) : undefined,
+    maxPriorityFeePerGas: tx.maxPriorityFeePerGas ? BigInt(tx.maxPriorityFeePerGas.toString()) : undefined
+  }
+}
+
 export class ViemSigner implements Signer {
   private walletClient: WalletClient
   public provider: Provider | null
@@ -308,7 +325,16 @@ export class ViemSigner implements Signer {
 
   // Implement signMessage method
   async signMessage(message: BytesLike): Promise<string> {
-    throw new Error('Method not implemented.')
+    if (!this.walletClient.account) {
+      throw new Error('Account is not set in the wallet client.')
+    }
+    const signature = await this.walletClient.signMessage({
+      account: this.walletClient.account!,
+      message: message as string
+    })
+
+    // Return the signature as a string
+    return joinSignature(signature)
   }
 
   // Implement signTransaction method
@@ -321,9 +347,20 @@ export class ViemSigner implements Signer {
     return new ViemSigner(this.walletClient, provider)
   }
 
-  // Implement sendTransaction method to send signed transactions
   async sendTransaction(transaction: TransactionRequest): Promise<TransactionResponse> {
-    throw new Error('Method not implemented.')
+    if (!this.provider) {
+      throw new Error('Provider is not set')
+    }
+    const adaptedTransaction = adaptToViemTransaction(transaction)
+    const tx = await this.walletClient.sendTransaction(adaptedTransaction)
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    return {
+      hash: tx,
+      wait: async (confirmations?: number) => {
+        return this.provider!.waitForTransaction(tx, confirmations)
+      }
+    }
   }
 
   // Additional method to sign typed data (EIP-712)
@@ -333,12 +370,24 @@ export class ViemSigner implements Signer {
       domain,
       types,
       message: value,
-      primaryType: 'Agent'
+      primaryType: Object.keys(types)[0] // executeBySig etc
     })
     return joinSignature(signature)
   }
-  estimateGas(tx: TransactionRequest): Promise<bigint> {
-    throw new Error('Method not implemented.')
+  async estimateGas(tx: TransactionRequest): Promise<bigint> {
+    if (!this.provider) {
+      throw new Error('Provider is not set')
+    }
+    // Adapt the transaction request if necessary
+    const adaptedTx = adaptToViemTransaction(tx)
+    delete adaptedTx.type
+
+    // Estimate gas using the provider
+    const estimatedGas = await this.provider.estimateGas({
+      ...adaptedTx,
+      from: this.walletClient.account!.address
+    })
+    return BigInt(estimatedGas)
   }
 
   getNonce(blockTag?: BlockTag): Promise<number> {
@@ -356,7 +405,10 @@ export class ViemSigner implements Signer {
     throw new Error('Method not implemented.')
   }
   call(tx: TransactionRequest): Promise<string> {
-    throw new Error('Method not implemented.')
+    if (!this.provider) {
+      throw new Error('Provider is not set')
+    }
+    return this.provider.call(tx)
   }
   resolveName(name: string): Promise<string> {
     throw new Error('Method not implemented.')

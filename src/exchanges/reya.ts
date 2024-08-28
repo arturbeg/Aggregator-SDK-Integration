@@ -1,13 +1,14 @@
 import type { MarginAccountEntity, MarketEntity, PositionEntity, PositionHistoryEntity } from '@reyaxyz/api-sdk'
 import { ApiClient } from '@reyaxyz/api-sdk'
 import type { Address } from '@reyaxyz/common'
-import { ConditionalOrderType } from '@reyaxyz/common/src/types'
-import { createAccount } from '@reyaxyz/sdk'
+import { ConditionalOrderType } from '@reyaxyz/common'
+import { CommunityClient } from '@reyaxyz/community-sdk'
+import type { GetAccountLGEStatusResult } from '@reyaxyz/community-sdk/src/modules/lge/types'
+import { configureSDK, createAccount } from '@reyaxyz/sdk'
 import type { Chain } from 'viem'
-import { arbitrum } from 'viem/chains'
 
 import { FixedNumber } from '../../fixedNumber'
-import { CACHE_DAY, CACHE_SECOND, CACHE_TIME_MULT, getStaleTime } from '../common/cache'
+import { CACHE_DAY, CACHE_MINUTE, CACHE_SECOND, CACHE_TIME_MULT, getStaleTime } from '../common/cache'
 import { ZERO_FN } from '../common/constants'
 import { getPaginatedResponse, toAmountInfoFN, validDenomination } from '../common/helper'
 import { decodeRawMarketId, encodeMarketId } from '../common/markets'
@@ -30,7 +31,8 @@ import {
   reyaCacheGetLiquidationHistory,
   reyaCacheGetMarginAccount,
   reyaCacheGetMaxExposure,
-  reyaCacheGetTradeHistory
+  reyaCacheGetTradeHistory,
+  reyaCacheGetXpInfo
 } from '../configs/reya/reyaCacheHelper'
 import {
   signApproveAndDeposit,
@@ -80,6 +82,9 @@ import type {
   UpdatePositionMarginData
 } from '../interfaces'
 
+ApiClient.configure('production')
+CommunityClient.configure('production')
+configureSDK('production')
 export class ReyaAdapterV1 implements IAdapterV1 {
   protocolId: ProtocolId = 'REYA'
   marginAccountId: number = 0
@@ -88,7 +93,8 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     const txs: ActionParam[] = []
     for (const each of params) {
       if (each.protocol !== 'REYA') throw new Error('invalid protocol id')
-      if (each.chainId !== arbitrum.id) throw new Error('chain id mismatch')
+      console.log(this.marginAccountId, 'margin account')
+      // if (each.chainId !== arbitrum.id || each.chainId !== optimism.id) throw new Error('chain id mismatch')
       txs.push(signApproveAndDeposit(each.chainId, this.marginAccountId, Number(each.amount), each.token.address))
     }
     return txs
@@ -163,7 +169,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
 
       let sizeDelta = Number(closeData.closeSize.amount._value)
       sizeDelta = toLowerTick(sizeDelta, Number(market.baseSpacing))
-      const isBuy = positionInfoData.direction === 'SHORT'
+      const isBuy = positionInfoData.direction === 'LONG'
 
       const amount = isBuy ? -sizeDelta : sizeDelta
       if (closeData.type == 'MARKET') {
@@ -205,7 +211,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
         ),
         storedCollateral: marginAccount.collaterals.map((c) => ({
           token: c.token,
-          amount: FixedNumber.fromValue(c.balance)
+          amount: FixedNumber.fromString(String(Number(c.balance).toFixed(18)))
         }))
       }
     }
@@ -335,12 +341,12 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       const marketId = encodeMarketId(reya.id.toString(), this.protocolId, pos.market.quoteToken)
       const posSize = FixedNumber.fromString(String(pos.base))
       const posNtl = posSize.mulFN(FixedNumber.fromString(String(pos.market.markPrice)))
-      const leverage = posNtl.abs().div(FixedNumber.fromValue(marginAccount.totalBalanceWithHaircut))
+      const leverage = posNtl.abs().div(FixedNumber.fromString(String(marginAccount.totalBalanceWithHaircut)))
       const marginUsed = posNtl.divFN(leverage)
       const direction = pos.side == 'long' ? 'LONG' : 'SHORT'
 
-      const fundingFee = FixedNumber.fromString(String(pos.fundingPnl))
-      const rawPnl = FixedNumber.fromString(String(pos.realisedPnl))
+      const fundingFee = FixedNumber.fromString(String(Number(pos.fundingPnl).toFixed(18)))
+      const rawPnl = FixedNumber.fromString(String(Number(pos.realisedPnl).toFixed(18)))
       const aggregatePnl = rawPnl.subFN(fundingFee)
 
       const upnl: PnlData = {
@@ -384,7 +390,9 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     const sTimeAccount = getStaleTime(CACHE_SECOND * 3, opts)
     const acccountData = await reyaCacheGetMarginAccount(this.marginAccountId, sTimeAccount, sTimeAccount, opts)
     return toAmountInfoFN(
-      FixedNumber.fromValue(acccountData.totalBalanceWithHaircut - acccountData.liquidationMarginRequirement),
+      FixedNumber.fromString(
+        String(Number(acccountData.totalBalanceWithHaircut - acccountData.liquidationMarginRequirement).toFixed(18))
+      ),
       false
     )
   }
@@ -415,7 +423,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       const market = allMarkets.find((m) => m.quoteToken === asset)
       if (!market) throw new Error('Market not found')
 
-      const mp = FixedNumber.fromValue(market.markPrice)
+      const mp = FixedNumber.fromString(String(Number(market.markPrice).toFixed(18)))
       const closeSizeRounded = toLowerTick(Number(cpd.closeSize.amount._value), Number(market.baseSpacing))
       const closeSize = FixedNumber.fromString(closeSizeRounded.toString())
       const posSize = pos.size.amount
@@ -449,12 +457,12 @@ export class ReyaAdapterV1 implements IAdapterV1 {
         fromBase: true
       })
 
-      const fee = FixedNumber.fromValue(simulation.fees)
+      const fee = FixedNumber.fromString(String(Number(simulation.fees).toFixed(18)))
 
       const remainingSize = posSize.subFN(closeSize)
       const marginReqByPos = remainingSize.mulFN(trigPrice).divFN(ml)
 
-      const liqPrice = FixedNumber.fromValue(simulation.liquidationPrice)
+      const liqPrice = FixedNumber.fromString(String(Number(simulation.liquidationPrice).toFixed(18)))
 
       const preview: CloseTradePreviewInfo = {
         marketId: pos.marketId,
@@ -489,15 +497,23 @@ export class ReyaAdapterV1 implements IAdapterV1 {
         const maxExposureLong = maxExposures.find((m) => m.marketId === marketEntity.id && m.type === 'long')
         const maxExposureShort = maxExposures.find((m) => m.marketId === marketEntity.id && m.type === 'short')
         dynamicMarketMetadata.push({
-          oiLong: FixedNumber.fromValue(marketEntity.longOI).mul(FixedNumber.fromValue(marketEntity.markPrice)),
-          oiShort: FixedNumber.fromValue(marketEntity.shortOI).mul(FixedNumber.fromValue(marketEntity.markPrice)),
+          oiLong: FixedNumber.fromString(String(Number(marketEntity.longOI).toFixed(18))).mul(
+            FixedNumber.fromString(String(Number(marketEntity.markPrice).toFixed(18)))
+          ),
+          oiShort: FixedNumber.fromString(String(Number(marketEntity.shortOI))).mul(
+            FixedNumber.fromString(Number(marketEntity.markPrice).toFixed(18))
+          ),
           isOiBifurcated: true,
-          availableLiquidityLong: FixedNumber.fromValue(maxExposureLong?.maxAmountSize || 0),
-          availableLiquidityShort: FixedNumber.fromValue(maxExposureShort?.maxAmountSize || 0),
-          longFundingRate: FixedNumber.fromValue(marketEntity.fundingRateAnnualized).mulFN(
+          availableLiquidityLong: FixedNumber.fromString(
+            String(Number(maxExposureLong?.maxAmountSize || 0).toFixed(18))
+          ),
+          availableLiquidityShort: FixedNumber.fromString(
+            String(Number(maxExposureShort?.maxAmountSize || 0).toFixed(18))
+          ),
+          longFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRateAnnualized).toFixed(18))).mulFN(
             FixedNumber.fromString('-1')
           ),
-          shortFundingRate: FixedNumber.fromValue(marketEntity.fundingRateAnnualized),
+          shortFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRateAnnualized).toFixed(18))),
           longBorrowRate: ZERO_FN,
           shortBorrowRate: ZERO_FN
         })
@@ -564,6 +580,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       return market ? FixedNumber.fromString(String(market.markPrice)) : ZERO_FN
     })
   }
+
   async getMarketState(wallet: string, marketIds: string[], opts?: ApiOpts | undefined): Promise<MarketState[]> {
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
     await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
@@ -579,9 +596,9 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       const position = acccountData.positions.find((p) => p.market.quoteToken === asset)
 
       if (position) {
-        lev = FixedNumber.fromValue(position.size)
+        lev = FixedNumber.fromString(String(Number(position.size).toFixed(18)))
           .abs()
-          .div(FixedNumber.fromValue(acccountData.totalBalanceWithHaircut))
+          .div(FixedNumber.fromString(String(Number(acccountData.totalBalanceWithHaircut).toFixed(18))))
       }
 
       const marketState: MarketState = {
@@ -628,7 +645,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
 
       const market = allMarkets.find((m) => m.quoteToken === decodeRawMarketId(od.marketId))
       if (!market) throw new Error('Market not found')
-      const mp = FixedNumber.fromValue(market.markPrice)
+      const mp = FixedNumber.fromString(String(Number(market.markPrice).toFixed(18)))
 
       await ApiClient.tradeSimulation.arm({
         marketId: market.id,
@@ -665,8 +682,8 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       const trigPriceRounded = toNearestTick(Number(trigPriceOrig._value), Number(market.baseSpacing))
       const trigPrice = FixedNumber.fromString(trigPriceRounded.toString())
 
-      const actPosSize = actPos ? FixedNumber.fromValue(actPos.base) : ZERO_FN
-      const actPosAvgEntryPrice = actPos ? FixedNumber.fromValue(actPos.price) : ZERO_FN
+      const actPosSize = actPos ? FixedNumber.fromString(String(Number(actPos.base).toFixed(18))) : ZERO_FN
+      const actPosAvgEntryPrice = actPos ? FixedNumber.fromString(String(Number(actPos.price).toFixed(18))) : ZERO_FN
 
       const lev = FixedNumber.fromString(
         getReqdLeverageFN(od.sizeDelta.amount, od.marginDelta.amount, trigPrice).toString()
@@ -692,7 +709,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       // next margin is always position / leverage
       const nextMargin = nextSize.mulFN(trigPrice).divFN(lev)
 
-      const nextEntryPrice = FixedNumber.fromValue(simulation.estimatedPrice)
+      const nextEntryPrice = FixedNumber.fromString(String(Number(simulation.estimatedPrice).toFixed(18)))
       let avgEntryPrice = nextEntryPrice
       let nextDirection = od.direction
       if (actPos && pos) {
@@ -713,10 +730,10 @@ export class ReyaAdapterV1 implements IAdapterV1 {
         }
       }
       // if accountData is not set return liqPrice as 0 so that it is autorouter compatible
-      const liqPrice = FixedNumber.fromValue(simulation.liquidationPrice)
+      const liqPrice = FixedNumber.fromString(String(Number(simulation.liquidationPrice).toFixed(18)))
 
-      const fee = FixedNumber.fromValue(simulation.fees)
-      const priceImpact = FixedNumber.fromValue(simulation.estimatedSlippage)
+      const fee = FixedNumber.fromString(String(Number(simulation.fees).toFixed(18)))
+      const priceImpact = FixedNumber.fromString(String(Number(simulation.estimatedSlippage).toFixed(18)))
 
       const preview = {
         marketId: od.marketId,
@@ -829,6 +846,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     }
     return payload
   }
+
   async init(wallet: string | undefined, opts?: ApiOpts): Promise<void> {
     // create margin account
     if (!wallet) throw new Error('wallet address required')
@@ -987,5 +1005,14 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     }
 
     return payload
+  }
+
+  async getXpInfo(wallet: string | undefined, opts?: ApiOpts): Promise<number> {
+    if (!wallet) throw new Error('wallet address required')
+
+    const sTimeXp = getStaleTime(CACHE_MINUTE, opts)
+    const result: GetAccountLGEStatusResult = await reyaCacheGetXpInfo(wallet, sTimeXp, sTimeXp * CACHE_TIME_MULT, opts)
+
+    return Number(result.xp.value)
   }
 }
