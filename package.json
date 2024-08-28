@@ -104,6 +104,7 @@
     "@pythnetwork/price-service-client": "^1.9.0",
     "@reyaxyz/api-sdk": "^0.120.1",
     "@reyaxyz/common": "^0.186.0",
+    "@reyaxyz/community-sdk": "^0.41.43",
     "@reyaxyz/sdk": "^0.106.64",
     "@synfutures/oyster-sdk": "0.1.11",
     "@synthetixio/wei": "^2.74.4",
