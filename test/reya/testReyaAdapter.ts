@@ -123,6 +123,27 @@ async function getOpenTradePreview() {
   console.dir(openTradePreview, { depth: 4 })
 }
 
+async function getBars() {
+  await aa.init(address)
+
+  const bars = await aa.getBars({
+    symbolInfo: 'ETH-PERP',
+    resolution: '1',
+    from: 1724931138,
+    to: 1724931738,
+    countBack: 5,
+    firstDataRequest: true
+  })
+  console.dir(bars, { depth: 6 })
+}
+
+async function getWithdrawableBalance() {
+  await aa.init(address)
+  const markets = await aa.supportedMarkets(aa.supportedChains())
+  const balance = await aa.getWithdrawableBalance(address, REYA_COLLATERAL_TOKEN, markets[0])
+  console.dir(balance, { depth: 6 })
+}
+
 init()
 // getXpInfo()
 // getDynamicMarketMetadata()
@@ -132,4 +153,6 @@ init()
 // getAvailableToTrade()
 // getTradesHistory()
 // getLiquidationHistory()
-getOpenTradePreview()
+// getOpenTradePreview()
+//getBars()
+getWithdrawableBalance()

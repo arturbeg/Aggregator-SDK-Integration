@@ -1,6 +1,5 @@
 import type { MarginAccountEntity, MarketEntity, PositionEntity, PositionHistoryEntity } from '@reyaxyz/api-sdk'
 import { ApiClient } from '@reyaxyz/api-sdk'
-import type { Address } from '@reyaxyz/common'
 import { ConditionalOrderType } from '@reyaxyz/common'
 import { CommunityClient } from '@reyaxyz/community-sdk'
 import type { GetAccountLGEStatusResult } from '@reyaxyz/community-sdk/src/modules/lge/types'
@@ -12,6 +11,7 @@ import { CACHE_DAY, CACHE_MINUTE, CACHE_SECOND, CACHE_TIME_MULT, getStaleTime } 
 import { ZERO_FN } from '../common/constants'
 import { getPaginatedResponse, toAmountInfoFN, validDenomination } from '../common/helper'
 import { decodeRawMarketId, encodeMarketId } from '../common/markets'
+import type { Token } from '../common/tokens'
 import { tokens } from '../common/tokens'
 import { getReqdLeverageFN, toLowerTick, toNearestTick } from '../configs/aevo/helper'
 import {
@@ -25,7 +25,7 @@ import {
 } from '../configs/hyperliquid/hlErrors'
 import { REYA_COLLATERAL_TOKEN } from '../configs/reya/chains'
 import { reya, REYA_TOKENS_MAP } from '../configs/reya/config'
-import { reyaMarketIdToAsset } from '../configs/reya/helper'
+import { mapResolution, reyaMarketIdToAsset } from '../configs/reya/helper'
 import {
   reyaCacheGetAllMarkets,
   reyaCacheGetLiquidationHistory,
@@ -59,6 +59,7 @@ import type {
   DepositWithdrawParams,
   DynamicMarketMetadata,
   GenericStaticMarketMetadata,
+  GetBarsParams,
   HistoricalTradeInfo,
   IAdapterV1,
   IdleMarginInfo,
@@ -78,6 +79,7 @@ import type {
   ProtocolId,
   ProtocolInfo,
   TradeData,
+  TVBar,
   UpdateOrder,
   UpdatePositionMarginData
 } from '../interfaces'
@@ -109,6 +111,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       explicitFundingClaim: false,
       collateralDeltaInToken: true,
       collateralUsesLimitPricing: false,
+      minimumDepositAmountUsd: FixedNumber.fromString('10'),
       depositData: {
         10: [tokens['USDC.e']],
         42161: [tokens['USDC.e']],
@@ -996,7 +999,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
           each.chainId,
           this.marginAccountId,
           {
-            address: each.wallet as Address
+            address: each.wallet.toLowerCase() as Lowercase<string>
           },
           Number(each.amount),
           each.token.address
@@ -1014,5 +1017,91 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     const result: GetAccountLGEStatusResult = await reyaCacheGetXpInfo(wallet, sTimeXp, sTimeXp * CACHE_TIME_MULT, opts)
 
     return Number(result.xp.value)
+  }
+
+  async getBars(params: GetBarsParams): Promise<TVBar[]> {
+    const { symbolInfo, resolution, from, to } = params
+
+    const sTimeMarkets = getStaleTime(CACHE_DAY)
+    const allMarkets = (await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT)).filter(
+      (m) => m.isActive
+    )
+    const symbol = symbolInfo.split('-')[0]
+
+    const market = allMarkets.find((m) => m.quoteToken === symbol)
+
+    if (!market) throw new Error('market not found')
+
+    const result = await ApiClient.markets.getMarketCandles({
+      marketId: market.id,
+      resolution: mapResolution(resolution),
+      fromISO: new Date(from * 1000).toISOString(),
+      toISO: new Date(to * 1000).toISOString()
+    })
+
+    const bars: TVBar[] = []
+
+    for (const candle of result.candles) {
+      bars.push({
+        time: new Date(candle.startedAt).getTime(),
+        low: Number(candle.low),
+        high: Number(candle.high),
+        open: Number(candle.open),
+        close: Number(candle.close),
+        volume: 0
+      })
+    }
+
+    return bars
+  }
+
+  getDepositWithdrawTime(
+    action: 'Deposit' | 'Withdraw',
+    isEthChain: boolean,
+    isArbitrumChain: boolean,
+    isOptimismChain: boolean
+  ): {
+    deposit: string
+    withdraw: string
+  } {
+    return {
+      deposit: '5 Mins',
+      withdraw: '5 Mins'
+    }
+  }
+
+  getMatchingPosition(
+    positions: PositionInfo[],
+    market: MarketInfo,
+    collateralToken: Token,
+    order: 'long' | 'short'
+  ): PositionInfo | undefined {
+    return positions.find((p) => p.marketId === market.marketId)
+  }
+
+  async getWithdrawableBalance(
+    wallet: string,
+    collateralToken: Token,
+    market: MarketInfo,
+    opts?: ApiOpts
+  ): Promise<FixedNumber> {
+    const sTimeAccount = getStaleTime(CACHE_SECOND, opts)
+    const marginAccount: MarginAccountEntity = await reyaCacheGetMarginAccount(
+      this.marginAccountId,
+      sTimeAccount,
+      sTimeAccount * CACHE_TIME_MULT,
+      opts
+    )
+
+    const collateral = marginAccount.collaterals.find(
+      (c) => c.token.toLowerCase() === collateralToken.symbol.toLowerCase()
+    )
+    if (!collateral) return FixedNumber.fromString('0')
+
+    return FixedNumber.fromString(String(Number(collateral.balance).toFixed(18)))
+  }
+
+  isOrderForPosition(order: OrderInfo, position: PositionInfo): boolean {
+    return order.marketId === position.marketId
   }
 }
