@@ -513,10 +513,10 @@ export class ReyaAdapterV1 implements IAdapterV1 {
           availableLiquidityShort: FixedNumber.fromString(
             String(Number(maxExposureShort?.maxAmountSize || 0).toFixed(18))
           ),
-          longFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRateAnnualized).toFixed(18))).mulFN(
+          longFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRate).toFixed(18))).mulFN(
             FixedNumber.fromString('-1')
           ),
-          shortFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRateAnnualized).toFixed(18))),
+          shortFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRate).toFixed(18))),
           longBorrowRate: ZERO_FN,
           shortBorrowRate: ZERO_FN
         })

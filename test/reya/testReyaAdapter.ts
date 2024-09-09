@@ -45,7 +45,8 @@ async function getDynamicMarketMetadata() {
 }
 
 async function getAllPositions() {
-  await aa.init(address)
+  // await aa.init(address)
+  console.log(aa.marginAccountId)
   const positions = (await aa.getAllPositions(address, undefined)).result
   console.dir(positions, { depth: 4 })
 }
@@ -144,10 +145,10 @@ async function getWithdrawableBalance() {
   console.dir(balance, { depth: 6 })
 }
 
-init()
+await init()
 // getXpInfo()
 // getDynamicMarketMetadata()
-// getAllPositions()
+getAllPositions()
 // getAllOrders()
 // getAccountInfo()
 // getAvailableToTrade()
@@ -155,4 +156,4 @@ init()
 // getLiquidationHistory()
 // getOpenTradePreview()
 //getBars()
-getWithdrawableBalance()
+// getWithdrawableBalance()
