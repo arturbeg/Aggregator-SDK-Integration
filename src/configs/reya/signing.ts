@@ -43,8 +43,6 @@ export function signWithdraw(
   return {
     fn: async (wallet: WalletClient) => {
       const signer: Signer = new ViemSigner(wallet) as Signer
-      const token = tokenAddress[moneyInOutChainId === arbitrum.id ? arbitrum.id : optimism.id] as Lowercase<string>
-
       const accountOwner = await ApiClient.owner.getOwnerMetadata({
         ownerAddress: owner.address
       })
@@ -59,7 +57,7 @@ export function signWithdraw(
           coreSigNonce: accountOwner.coreSigNonce
         },
         amount,
-        tokenAddress: token
+        tokenAddress: '0xa9f32a851b1800742e47725da54a09a7ef2556a3' // reya supports only usdc
       })
       return undefined
     },
