@@ -787,17 +787,18 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       0,
       opts
     )
-
     for (const th of tradesHistory) {
       const asset = th.market.quoteToken
       const marketId = encodeMarketId(reya.id.toString(), this.protocolId, asset)
       const direction = th.action == 'long-trade' ? 'LONG' : 'SHORT'
       const size = FixedNumber.fromString(String(Math.abs(Number(th.base))))
+
+      const collateral = (Math.abs(Number(th.base)) * Number(th.executionPrice)) / th.market.maxLeverage
       const tradeData: TradeData = {
         marketId: marketId,
         direction: direction,
         sizeDelta: toAmountInfoFN(size, true),
-        marginDelta: toAmountInfoFN(ZERO_FN, true) // marginDelta is not available in trade history
+        marginDelta: toAmountInfoFN(FixedNumber.fromString(Number(collateral).toFixed(0)), false)
       }
 
       const tradeInfo: HistoricalTradeInfo = {
