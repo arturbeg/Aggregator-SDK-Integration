@@ -325,11 +325,12 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
     await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
 
+    const sTimePositions = getStaleTime(CACHE_SECOND, opts)
     const positions: PositionInfo[] = []
     const marginAccount: MarginAccountEntity = await reyaCacheGetMarginAccount(
       this.marginAccountId,
-      sTimeMarkets,
-      sTimeMarkets * CACHE_TIME_MULT,
+      sTimePositions,
+      sTimePositions * CACHE_TIME_MULT,
       opts
     )
     const perpPositions: PositionEntity[] = marginAccount.positions
