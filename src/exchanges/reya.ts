@@ -338,7 +338,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     for (let i = 0; i < perpPositions.length; i++) {
       const pos = perpPositions[i]
       const marketId = encodeMarketId(reya.id.toString(), this.protocolId, pos.market.quoteToken)
-      const posSize = FixedNumber.fromString(String(pos.base))
+      const posSize = FixedNumber.fromString(String(Math.abs(Number(pos.base))))
       const posNtl = posSize.mulFN(FixedNumber.fromString(String(pos.market.markPrice)))
       const leverage = posNtl.abs().div(FixedNumber.fromString(String(marginAccount.totalBalanceWithHaircut)))
       const marginUsed = posNtl.divFN(leverage)
@@ -556,7 +556,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
           marketId: marketId,
           liquidationPrice: FixedNumber.fromString(String(lh.executionPrice)),
           direction: direction,
-          sizeClosed: toAmountInfoFN(FixedNumber.fromString(String(lh.base)), true),
+          sizeClosed: toAmountInfoFN(FixedNumber.fromString(String(Math.abs(Number(lh.base)))), true),
           realizedPnl: ZERO_FN,
           liquidationFees: totalFees,
           remainingCollateral: toAmountInfoFN(FixedNumber.fromString('0'), true),
@@ -683,7 +683,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       const trigPriceRounded = toNearestTick(Number(trigPriceOrig._value), Number(market.baseSpacing))
       const trigPrice = FixedNumber.fromString(trigPriceRounded.toString())
 
-      const actPosSize = actPos ? FixedNumber.fromString(String(Number(actPos.base).toFixed(18))) : ZERO_FN
+      const actPosSize = actPos ? FixedNumber.fromString(String(Math.abs(Number(actPos.base)))) : ZERO_FN
       const actPosAvgEntryPrice = actPos ? FixedNumber.fromString(String(Number(actPos.price).toFixed(18))) : ZERO_FN
 
       const lev = FixedNumber.fromString(
@@ -792,7 +792,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       const asset = th.market.quoteToken
       const marketId = encodeMarketId(reya.id.toString(), this.protocolId, asset)
       const direction = th.action == 'long-trade' ? 'LONG' : 'SHORT'
-      const size = FixedNumber.fromString(String(th.base))
+      const size = FixedNumber.fromString(String(Math.abs(Number(th.base))))
       const tradeData: TradeData = {
         marketId: marketId,
         direction: direction,
