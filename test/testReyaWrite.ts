@@ -66,25 +66,44 @@ async function testWithdraw() {
 async function testIncreaseOrder() {
   await reya.init(wallet.account.address)
 
-  const market = (await reya.supportedMarkets([reyaChain])).find((m) => m.indexToken.symbol === 'BTC')!
+  const market = (await reya.supportedMarkets([reyaChain])).find((m) => m.indexToken.symbol === 'ARB')!
+
+  // const orderData: CreateOrder[] = [
+  //   {
+  //     marketId: market.marketId,
+  //     direction: 'LONG',
+  //     sizeDelta: { amount: FixedNumber.fromString('0.001'), isTokenAmount: true },
+  //     marginDelta: { amount: FixedNumber.fromString('6.117002'), isTokenAmount: true },
+  //     triggerData: {
+  //       triggerPrice: FixedNumber.fromString('50000'),
+  //       triggerAboveThreshold: true,
+  //       triggerLimitPrice: undefined
+  //     },
+  //     collateral: REYA_COLLATERAL_TOKEN,
+  //     type: 'MARKET',
+  //     mode: 'CROSS',
+  //     slippage: undefined
+  //   }
+  // ]
 
   const orderData: CreateOrder[] = [
     {
       marketId: market.marketId,
       direction: 'LONG',
-      sizeDelta: { amount: FixedNumber.fromString('0.001'), isTokenAmount: true },
+      sizeDelta: { amount: FixedNumber.fromString('1'), isTokenAmount: true },
       marginDelta: { amount: FixedNumber.fromString('6.117002'), isTokenAmount: true },
       triggerData: {
-        triggerPrice: FixedNumber.fromString('50000'),
+        triggerPrice: FixedNumber.fromString('0.3'),
         triggerAboveThreshold: true,
         triggerLimitPrice: undefined
       },
       collateral: REYA_COLLATERAL_TOKEN,
-      type: 'MARKET',
+      type: 'LIMIT',
       mode: 'CROSS',
       slippage: undefined
     }
   ]
+
 
   const executionPayload = await reya.increasePosition(orderData, wallet.account.address)
   console.dir(executionPayload, { depth: 4 })
@@ -151,27 +170,45 @@ async function testCancelOrder() {
 async function testUpdateOrder() {
 
   await reya.init(wallet.account.address)
+  //const market = (await reya.supportedMarkets([reyaChain])).find((m) => m.indexToken.symbol === 'BTC')!
 
-  const market = (await reya.supportedMarkets([reyaChain])).find((m) => m.indexToken.symbol === 'BTC')!
+  const market = (await reya.supportedMarkets([reyaChain])).find((m) => m.indexToken.symbol === 'ARB')!
 
   // '0x03faddbc72a102dff7ab5609264fefe4f46355c512d7c19060e2f21ccaa6411e',
   // '0xebe092323608f0a13c063b86bd46e91130716bfb76fe50d0dac1480bf01b0fde',
   // '0xb84afb97c9b37dc1267ac51e92a6834c475118f7a2a2a1f4893aaa2f7388e38c',
 
+  // const orderData: UpdateOrder[] = [
+  //   {
+  //     marketId: market.marketId,
+  //     direction: 'LONG',
+  //     sizeDelta: { amount: FixedNumber.fromString('0.011000000000000000'), isTokenAmount: true },
+  //     marginDelta: { amount: FixedNumber.fromString('0'), isTokenAmount: true },
+  //     triggerData: {
+  //       triggerPrice: FixedNumber.fromString('80000'),
+  //       triggerAboveThreshold: true,
+  //       triggerLimitPrice: undefined
+  //     },
+  //     mode: 'CROSS',
+  //     orderId: 'eadc9c31-9b1a-4ee0-bfa2-5228a94ccca4',
+  //     orderType: 'TAKE_PROFIT'
+  //   },
+  // ]
+
   const orderData: UpdateOrder[] = [
     {
       marketId: market.marketId,
       direction: 'LONG',
-      sizeDelta: { amount: FixedNumber.fromString('0.011000000000000000'), isTokenAmount: true },
+      sizeDelta: { amount: FixedNumber.fromString('2'), isTokenAmount: true },
       marginDelta: { amount: FixedNumber.fromString('0'), isTokenAmount: true },
       triggerData: {
-        triggerPrice: FixedNumber.fromString('80000'),
+        triggerPrice: FixedNumber.fromString('0.2'),
         triggerAboveThreshold: true,
         triggerLimitPrice: undefined
       },
       mode: 'CROSS',
-      orderId: 'eadc9c31-9b1a-4ee0-bfa2-5228a94ccca4',
-      orderType: 'TAKE_PROFIT'
+      orderId: '0843ea62-fd48-49f7-809d-99b097e31382',
+      orderType: 'LIMIT'
     },
   ]
 
@@ -182,7 +219,7 @@ async function testUpdateOrder() {
 }
 // testDeposit()
 // testWithdraw()
-// testIncreaseOrder()
+await testIncreaseOrder()
 // testClosePosition()
 //testCancelOrder()
-//testUpdateOrder()
+// await testUpdateOrder()

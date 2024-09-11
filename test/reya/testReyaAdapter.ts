@@ -48,13 +48,13 @@ async function getAllPositions() {
   // await aa.init(address)
   console.log(aa.marginAccountId)
   const positions = (await aa.getAllPositions(address, undefined)).result
-  console.dir(positions, { depth: 4 })
+  console.dir(JSON.stringify(positions), { depth: 3 })
 }
 
 async function getAllOrders() {
   await aa.init(address)
   const orders = (await aa.getAllOrders(address, undefined)).result
-  console.dir(orders, { depth: 4 })
+  console.dir(orders, { depth: 1 })
 }
 
 async function getAccountInfo() {
@@ -148,10 +148,10 @@ async function getWithdrawableBalance() {
 await init()
 // getXpInfo()
 // getDynamicMarketMetadata()
-// getAllPositions()
-// getAllOrders()
+await getAllPositions()
+//await getAllOrders()
 // getAccountInfo()
-getAvailableToTrade()
+// getAvailableToTrade()
 // getTradesHistory()
 // getLiquidationHistory()
 // getOpenTradePreview()

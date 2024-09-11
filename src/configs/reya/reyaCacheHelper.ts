@@ -105,6 +105,27 @@ export async function reyaCacheGetMarginAccount(
   })
 }
 
+export async function reyaCacheGetPendingOrders(
+  walletAddress: string,
+  marginAccountId: number,
+  staleTime: number,
+  cacheTime: number,
+  opts?: ApiOpts
+) {
+  return cacheFetch({
+    key: [REYA_CACHE_PREFIX, 'pending_orders'],
+    fn: () =>
+      ApiClient.conditionalOrders.getConditionalOrdersHistoryForMarginAccount({
+        address: walletAddress,
+        marginAccountId: marginAccountId,
+        limit: 100
+      }),
+    staleTime: staleTime,
+    cacheTime: cacheTime,
+    opts
+  })
+}
+
 export async function reyaCacheGetLiquidationHistory(
   walletAddress: string,
   staleTime: number,

@@ -31,6 +31,7 @@ import {
   reyaCacheGetLiquidationHistory,
   reyaCacheGetMarginAccount,
   reyaCacheGetMaxExposure,
+  reyaCacheGetPendingOrders,
   reyaCacheGetTradeHistory,
   reyaCacheGetXpInfo
 } from '../configs/reya/reyaCacheHelper'
@@ -198,6 +199,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
   }
 
   async getAccountInfo(wallet: string, opts?: ApiOpts): Promise<AccountInfo[]> {
+    if (!wallet) throw new Error('wallet address required')
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
     const marginAccount: MarginAccountEntity = await reyaCacheGetMarginAccount(
       this.marginAccountId,
@@ -231,22 +233,22 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     pageOptions: PageOptions | undefined,
     opts?: ApiOpts | undefined
   ): Promise<PaginatedRes<OrderInfo>> {
+    if (!wallet) throw new Error('wallet address required')
     const ordersInfo: OrderInfo[] = []
+    const sTimeOrders = getStaleTime(CACHE_SECOND, opts)
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
-    const marginAccount: MarginAccountEntity = await reyaCacheGetMarginAccount(
-      this.marginAccountId,
-      sTimeMarkets,
-      sTimeMarkets * CACHE_TIME_MULT,
-      opts
-    )
-    const perpPositions: PositionEntity[] = marginAccount.positions
+    const markets = await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
 
-    for (let i = 0; i < perpPositions.length; i++) {
-      const position = perpPositions[i]
+    const pendingOrders = (
+      await reyaCacheGetPendingOrders(wallet, this.marginAccountId, sTimeOrders, sTimeOrders * CACHE_TIME_MULT, opts)
+    ).filter((o) => o.status === 'pending')
 
-      const direction = position.base > 0 ? 'LONG' : 'SHORT'
-      const sizeDelta = FixedNumber.fromString(String(position.base))
-      const asset = position.market.quoteToken
+    for (const order of pendingOrders) {
+      const market = markets.find((m) => Number(m.id) === Number(order.marketId))
+      if (!market) throw new Error('Market not found')
+      const direction = order.isLong ? 'LONG' : 'SHORT'
+      const sizeDelta = FixedNumber.fromString(String(order.base))
+      const asset = market.quoteToken
       const tradeData: TradeData = {
         marketId: encodeMarketId(reya.id.toString(), this.protocolId, asset),
         direction: direction,
@@ -254,43 +256,35 @@ export class ReyaAdapterV1 implements IAdapterV1 {
         marginDelta: toAmountInfoFN(FixedNumber.fromString('0'), false) // @todo check if we want to expose margin account
       }
 
-      if (position.conditionalOrdersInfo?.stopLoss) {
-        ordersInfo.push({
-          ...tradeData,
-          mode: 'CROSS',
-          triggerData: {
-            triggerPrice: FixedNumber.fromString(String(position.conditionalOrdersInfo?.stopLoss.stopLossPrice)),
-            triggerAboveThreshold: direction == 'SHORT',
-            triggerLimitPrice: undefined
-          },
-          marketId: encodeMarketId(reya.id.toString(), this.protocolId, asset),
-          orderId: position.conditionalOrdersInfo.stopLoss.orderId,
-          orderType: 'STOP_LOSS',
-          collateral: REYA_COLLATERAL_TOKEN,
-          protocolId: this.protocolId,
-          tif: 'GTC'
-        })
-      }
+      const orderType = (() => {
+        switch (order.orderType) {
+          case 'Stop Loss':
+            return 'STOP_LOSS'
+          case 'Take Profit':
+            return 'TAKE_PROFIT'
+          case 'Limit Order':
+            return 'LIMIT'
+          default:
+            throw new Error(`Unsupported order type: ${order.orderType}`)
+        }
+      })()
 
-      if (position.conditionalOrdersInfo?.takeProfit) {
-        ordersInfo.push({
-          ...tradeData,
-          mode: 'CROSS',
-          triggerData: {
-            triggerPrice: FixedNumber.fromString(String(position.conditionalOrdersInfo?.takeProfit.takeProfitPrice)),
-            triggerAboveThreshold: direction == 'LONG',
-            triggerLimitPrice: undefined
-          },
-          marketId: encodeMarketId(reya.id.toString(), this.protocolId, asset),
-          orderId: position.conditionalOrdersInfo.takeProfit.orderId,
-          orderType: 'TAKE_PROFIT',
-          collateral: REYA_COLLATERAL_TOKEN,
-          protocolId: this.protocolId,
-          tif: 'GTC'
-        })
-      }
+      ordersInfo.push({
+        ...tradeData,
+        mode: 'CROSS',
+        triggerData: {
+          triggerPrice: FixedNumber.fromString(String(order.price)),
+          triggerAboveThreshold: orderType === 'TAKE_PROFIT' ? direction == 'LONG' : direction == 'SHORT',
+          triggerLimitPrice: undefined
+        },
+        marketId: encodeMarketId(reya.id.toString(), this.protocolId, asset),
+        orderId: order.orderId,
+        orderType: orderType,
+        collateral: REYA_COLLATERAL_TOKEN,
+        protocolId: this.protocolId,
+        tif: 'GTC'
+      })
     }
-
     return getPaginatedResponse(ordersInfo, pageOptions)
   }
 
@@ -327,6 +321,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     pageOptions: PageOptions | undefined,
     opts?: ApiOpts | undefined
   ): Promise<PaginatedRes<PositionInfo>> {
+    if (!wallet) throw new Error('wallet address required')
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
     await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
 
@@ -349,8 +344,8 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       const direction = pos.side == 'long' ? 'LONG' : 'SHORT'
 
       const fundingFee = FixedNumber.fromString(String(Number(pos.fundingPnl).toFixed(18)))
-      const rawPnl = FixedNumber.fromString(String(Number(pos.realisedPnl).toFixed(18)))
-      const aggregatePnl = rawPnl.subFN(fundingFee)
+      const rawPnl = FixedNumber.fromString(String(Number(pos.priceVariationPnl).toFixed(18)))
+      const aggregatePnl = rawPnl.addFN(fundingFee)
 
       const upnl: PnlData = {
         aggregatePnl: aggregatePnl,
@@ -390,6 +385,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     params: AvailableToTradeParams<this['protocolId']>,
     opts?: ApiOpts | undefined
   ): Promise<AmountInfo> {
+    if (!wallet) throw new Error('wallet address required')
     const sTimeAccount = getStaleTime(CACHE_SECOND * 3, opts)
     const acccountData = await reyaCacheGetMarginAccount(this.marginAccountId, sTimeAccount, sTimeAccount, opts)
     return toAmountInfoFN(
@@ -513,10 +509,10 @@ export class ReyaAdapterV1 implements IAdapterV1 {
           availableLiquidityShort: FixedNumber.fromString(
             String(Number(maxExposureShort?.maxAmountSize || 0).toFixed(18))
           ),
-          longFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRate).toFixed(18))).mulFN(
+          longFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRate / 100).toFixed(18))),
+          shortFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRate / 100).toFixed(18))).mulFN(
             FixedNumber.fromString('-1')
           ),
-          shortFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRate).toFixed(18))),
           longBorrowRate: ZERO_FN,
           shortBorrowRate: ZERO_FN
         })
@@ -585,6 +581,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
   }
 
   async getMarketState(wallet: string, marketIds: string[], opts?: ApiOpts | undefined): Promise<MarketState[]> {
+    if (!wallet) throw new Error('wallet address required')
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
     await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
 
@@ -712,7 +709,9 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       // next margin is always position / leverage
       const nextMargin = nextSize.mulFN(trigPrice).divFN(lev)
 
-      const nextEntryPrice = FixedNumber.fromString(String(Number(simulation.estimatedPrice).toFixed(18)))
+      const nextEntryPrice = isMarket
+        ? FixedNumber.fromString(String(Number(simulation.estimatedPrice).toFixed(18)))
+        : trigPrice
       let avgEntryPrice = nextEntryPrice
       let nextDirection = od.direction
       if (actPos && pos) {
@@ -845,7 +844,19 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       if (!market) throw new Error('Market not found')
       const sizeDelta = toLowerTick(Number(each.sizeDelta.amount._value), Number(market.baseSpacing))
       const amount = each.direction === 'LONG' ? sizeDelta : -sizeDelta
-      payload.push(signOrder(this.marginAccountId, amount, market))
+      if (each.type === 'LIMIT') {
+        payload.push(
+          signTriggerOrder(
+            this.marginAccountId,
+            amount,
+            Number(each.triggerData!.triggerPrice._value),
+            ConditionalOrderType.LIMIT_ORDER,
+            market
+          )
+        )
+      } else {
+        payload.push(signOrder(this.marginAccountId, amount, market))
+      }
     }
     return payload
   }
@@ -899,7 +910,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
             CROSS: true
           },
           supportedOrderTypes: {
-            LIMIT: false,
+            LIMIT: true,
             MARKET: true,
             STOP_LOSS: true,
             TAKE_PROFIT: true,
@@ -958,12 +969,23 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       // ensure trigger data is present
       if (!each.triggerData) throw new Error('trigger data required but not present')
 
-      const amount = each.direction === 'LONG' ? Number(each.sizeDelta) : -Number(each.sizeDelta)
+      const amount = each.direction === 'LONG' ? Number(each.sizeDelta.amount) : -Number(each.sizeDelta.amount)
       if (each.orderType === 'STOP_LOSS_LIMIT' || each.orderType === 'TAKE_PROFIT_LIMIT') {
         throw new Error('Stop loss and take profit limit orders are not supported')
       }
-      const orderType =
-        each.orderType === 'STOP_LOSS' ? ConditionalOrderType.STOP_LOSS : ConditionalOrderType.TAKE_PROFIT
+
+      const orderType = (() => {
+        switch (each.orderType) {
+          case 'STOP_LOSS':
+            return ConditionalOrderType.STOP_LOSS
+          case 'TAKE_PROFIT':
+            return ConditionalOrderType.TAKE_PROFIT
+          case 'LIMIT':
+            return ConditionalOrderType.LIMIT_ORDER
+          default:
+            throw new Error(`Unsupported order type: ${each.orderType}`)
+        }
+      })()
 
       const market = allMarkets.find((m) => m.quoteToken === decodeRawMarketId(each.marketId))
       if (!market) throw new Error('Market not found')
@@ -1085,6 +1107,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     market: MarketInfo,
     opts?: ApiOpts
   ): Promise<FixedNumber> {
+    if (!wallet) throw new Error('wallet address required')
     const sTimeAccount = getStaleTime(CACHE_SECOND, opts)
     const marginAccount: MarginAccountEntity = await reyaCacheGetMarginAccount(
       this.marginAccountId,
