@@ -7,6 +7,7 @@ import { configureSDK, createAccount } from '@reyaxyz/sdk'
 import type { Chain } from 'viem'
 
 import { FixedNumber } from '../../fixedNumber'
+import { getClosePositionHeading, getIncreasePositionHeading } from '../common/buttonHeadings'
 import { CACHE_DAY, CACHE_MINUTE, CACHE_SECOND, CACHE_TIME_MULT, getStaleTime } from '../common/cache'
 import { ZERO_FN } from '../common/constants'
 import { getPaginatedResponse, toAmountInfoFN, validDenomination } from '../common/helper'
@@ -176,8 +177,9 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       const isBuy = positionInfoData.direction === 'LONG'
 
       const amount = isBuy ? -sizeDelta : sizeDelta
+      const heading = getClosePositionHeading('REYA', market.quoteToken, closeData.type)
       if (closeData.type == 'MARKET') {
-        payload.push(signOrder(this.marginAccountId, amount, market))
+        payload.push(signOrder(this.marginAccountId, amount, market, heading))
         continue
       }
 
@@ -191,7 +193,14 @@ export class ReyaAdapterV1 implements IAdapterV1 {
         closeData.type === 'STOP_LOSS' ? ConditionalOrderType.STOP_LOSS : ConditionalOrderType.TAKE_PROFIT
 
       payload.push(
-        signTriggerOrder(this.marginAccountId, amount, Number(closeData.triggerData.triggerPrice), orderType, market)
+        signTriggerOrder(
+          this.marginAccountId,
+          amount,
+          Number(closeData.triggerData.triggerPrice),
+          orderType,
+          market,
+          heading
+        )
       )
     }
 
@@ -846,6 +855,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       if (!market) throw new Error('Market not found')
       const sizeDelta = toLowerTick(Number(each.sizeDelta.amount._value), Number(market.baseSpacing))
       const amount = each.direction === 'LONG' ? sizeDelta : -sizeDelta
+      const heading = getIncreasePositionHeading('REYA', each.direction, market.quoteToken)
       if (each.type === 'LIMIT') {
         payload.push(
           signTriggerOrder(
@@ -853,11 +863,12 @@ export class ReyaAdapterV1 implements IAdapterV1 {
             amount,
             Number(each.triggerData!.triggerPrice._value),
             ConditionalOrderType.LIMIT_ORDER,
-            market
+            market,
+            heading
           )
         )
       } else {
-        payload.push(signOrder(this.marginAccountId, amount, market))
+        payload.push(signOrder(this.marginAccountId, amount, market, heading))
       }
     }
     return payload

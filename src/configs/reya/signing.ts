@@ -25,7 +25,7 @@ import type { WalletClient } from 'viem'
 import type { blast } from 'viem/chains'
 import { arbitrum, optimism } from 'viem/chains'
 
-import { EMPTY_DESC, REYA_DEPOSIT, REYA_TRADE, REYA_WITHDRAW } from '../../common/buttonHeadings'
+import { CANCEL_ORDER_H, EMPTY_DESC, REYA_DEPOSIT, REYA_TRADE, REYA_WITHDRAW } from '../../common/buttonHeadings'
 import type { Maybe } from '../../common/tokens'
 import type { RequestSignerFnWithMetadata } from '../../interfaces'
 
@@ -140,7 +140,8 @@ export function signApproveAndDeposit(
 export function signOrder(
   marginAccountId: number,
   amountInBase: number,
-  market: MarketEntity
+  market: MarketEntity,
+  heading: string
 ): RequestSignerFnWithMetadata {
   return {
     fn: async (wallet: WalletClient) => {
@@ -174,7 +175,7 @@ export function signOrder(
     isUserAction: true,
     isAgentRequired: false,
     desc: EMPTY_DESC,
-    heading: REYA_TRADE
+    heading: heading
   }
 }
 
@@ -183,7 +184,8 @@ export function signTriggerOrder(
   amountInBase: number,
   triggerPrice: number,
   orderType: ConditionalOrderType,
-  market: MarketEntity
+  market: MarketEntity,
+  heading: string
 ): RequestSignerFnWithMetadata {
   return {
     fn: async (wallet: WalletClient) => {
@@ -230,7 +232,7 @@ export function signTriggerOrder(
     isUserAction: true,
     isAgentRequired: false,
     desc: EMPTY_DESC,
-    heading: REYA_TRADE
+    heading: heading
   }
 }
 
@@ -251,7 +253,7 @@ export function signCancelOrder(orderId: string): RequestSignerFnWithMetadata {
     isUserAction: true,
     isAgentRequired: false,
     desc: EMPTY_DESC,
-    heading: REYA_TRADE
+    heading: CANCEL_ORDER_H
   }
 }
 
