@@ -497,14 +497,11 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     const dynamicMarketMetadata: DynamicMarketMetadata[] = []
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
     const markets = await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
-    const maxExposures = await reyaCacheGetMaxExposure(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
     for (let i = 0; i < marketIds.length; i++) {
       const mId = marketIds[i]
       const asset = reyaMarketIdToAsset(mId)
       const marketEntity = markets.find((cg) => cg.quoteToken === asset)
       if (marketEntity) {
-        const maxExposureLong = maxExposures.find((m) => m.marketId === marketEntity.id && m.type === 'long')
-        const maxExposureShort = maxExposures.find((m) => m.marketId === marketEntity.id && m.type === 'short')
         dynamicMarketMetadata.push({
           oiLong: FixedNumber.fromString(String(Number(marketEntity.longOI).toFixed(18))).mul(
             FixedNumber.fromString(String(Number(marketEntity.markPrice).toFixed(18)))
@@ -513,12 +510,8 @@ export class ReyaAdapterV1 implements IAdapterV1 {
             FixedNumber.fromString(Number(marketEntity.markPrice).toFixed(18))
           ),
           isOiBifurcated: true,
-          availableLiquidityLong: FixedNumber.fromString(
-            String(Number(maxExposureLong?.maxAmountSize || 0).toFixed(18))
-          ),
-          availableLiquidityShort: FixedNumber.fromString(
-            String(Number(maxExposureShort?.maxAmountSize || 0).toFixed(18))
-          ),
+          availableLiquidityLong: FixedNumber.fromString(String(Number(200 * 1000000).toFixed(18))),
+          availableLiquidityShort: FixedNumber.fromString(String(Number(200 * 1000000).toFixed(18))),
           longFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRate / 100).toFixed(18))),
           shortFundingRate: FixedNumber.fromString(String(Number(marketEntity.fundingRate / 100).toFixed(18))).mulFN(
             FixedNumber.fromString('-1')
