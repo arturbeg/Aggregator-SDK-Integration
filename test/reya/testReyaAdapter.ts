@@ -146,9 +146,9 @@ async function getWithdrawableBalance() {
 }
 
 await init()
-// getXpInfo()
+await getXpInfo()
 // getDynamicMarketMetadata()
-await getAllPositions()
+//await getAllPositions()
 //await getAllOrders()
 // getAccountInfo()
 // getAvailableToTrade()

@@ -1,8 +1,8 @@
 import type { GetMarketsResult, PositionHistoryEntity } from '@reyaxyz/api-sdk'
 import { ApiClient } from '@reyaxyz/api-sdk'
 import type { GetLiquidationHistoryForOwnerAddressResult } from '@reyaxyz/api-sdk/src/clients/modules/account/types'
+import type { GetUserTradingLeaderboardDataResult } from '@reyaxyz/common'
 import { CommunityClient } from '@reyaxyz/community-sdk'
-import type { GetAccountLGEStatusResult } from '@reyaxyz/community-sdk/src/modules/lge/types'
 
 import { cacheFetch, REYA_CACHE_PREFIX } from '../../common/cache'
 import type { ApiOpts } from '../../interfaces'
@@ -22,10 +22,10 @@ export async function reyaCacheGetAllMarkets(staleTime: number, cacheTime: numbe
 }
 
 export async function reyaCacheGetXpInfo(walletAddress: string, staleTime: number, cacheTime: number, opts?: ApiOpts) {
-  const lgeStatus: GetAccountLGEStatusResult = await cacheFetch({
+  const lgeStatus: GetUserTradingLeaderboardDataResult = await cacheFetch({
     key: [REYA_CACHE_PREFIX, 'xp'],
     fn: () =>
-      CommunityClient.lge.getAccountLGEStatusV4({
+      CommunityClient.lge.getUserTradingLeaderboardData({
         address: walletAddress
       }),
     staleTime: staleTime,

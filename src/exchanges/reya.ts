@@ -1,8 +1,8 @@
 import type { MarginAccountEntity, MarketEntity, PositionEntity, PositionHistoryEntity } from '@reyaxyz/api-sdk'
 import { ApiClient } from '@reyaxyz/api-sdk'
+import type { GetUserTradingLeaderboardDataResult, RankTrading } from '@reyaxyz/common'
 import { ConditionalOrderType } from '@reyaxyz/common'
 import { CommunityClient } from '@reyaxyz/community-sdk'
-import type { GetAccountLGEStatusResult } from '@reyaxyz/community-sdk/src/modules/lge/types'
 import { configureSDK, createAccount } from '@reyaxyz/sdk'
 import type { Chain } from 'viem'
 
@@ -1045,13 +1045,33 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     return payload
   }
 
-  async getXpInfo(wallet: string | undefined, opts?: ApiOpts): Promise<number> {
+  async getXpInfo(
+    wallet: string | undefined,
+    opts?: ApiOpts
+  ): Promise<{
+    weeklyXp: number
+    rank: RankTrading
+    totalXp: number
+    position: number
+    promotion: 'rankUp' | 'rankDown' | 'stale'
+  }> {
     if (!wallet) throw new Error('wallet address required')
 
     const sTimeXp = getStaleTime(CACHE_MINUTE, opts)
-    const result: GetAccountLGEStatusResult = await reyaCacheGetXpInfo(wallet, sTimeXp, sTimeXp * CACHE_TIME_MULT, opts)
+    const result: GetUserTradingLeaderboardDataResult = await reyaCacheGetXpInfo(
+      wallet,
+      sTimeXp,
+      sTimeXp * CACHE_TIME_MULT,
+      opts
+    )
 
-    return Number(result.xp.value)
+    return {
+      weeklyXp: result.weeklyXp,
+      rank: result.rank,
+      totalXp: result.totalXp,
+      position: result.ranking,
+      promotion: result.promotion as 'rankUp' | 'rankDown' | 'stale'
+    }
   }
 
   async getBars(params: GetBarsParams): Promise<TVBar[]> {
