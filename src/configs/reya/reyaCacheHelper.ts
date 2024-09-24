@@ -1,4 +1,10 @@
-import type { GetMarketsResult, PositionHistoryEntity } from '@reyaxyz/api-sdk'
+import type {
+  GetMarketsResult,
+  GetRageTradeLeaderboardForEpochAndTierResult,
+  GetRageTradeRewardsPerEpochAndTierParams,
+  GetRageTradeRewardsPerEpochAndTierResult,
+  PositionHistoryEntity
+} from '@reyaxyz/api-sdk'
 import { ApiClient } from '@reyaxyz/api-sdk'
 import type { GetLiquidationHistoryForOwnerAddressResult } from '@reyaxyz/api-sdk/src/clients/modules/account/types'
 import type { GetUserTradingLeaderboardDataResult } from '@reyaxyz/common'
@@ -34,6 +40,35 @@ export async function reyaCacheGetXpInfo(walletAddress: string, staleTime: numbe
   })
 
   return lgeStatus
+}
+
+export async function reyaCacheGetCompetitionRewards(staleTime: number, cacheTime: number, opts?: ApiOpts) {
+  const result: GetRageTradeRewardsPerEpochAndTierResult = await cacheFetch({
+    key: [REYA_CACHE_PREFIX, 'competition_rewards'],
+    fn: () => ApiClient.rageTrade.getRewardsPerEpochAndTier(),
+    staleTime: staleTime,
+    cacheTime: cacheTime,
+    opts
+  })
+
+  return result
+}
+
+export async function reyaCacheGetCompetitionLeaderBoard(
+  params: GetRageTradeRewardsPerEpochAndTierParams,
+  staleTime: number,
+  cacheTime: number,
+  opts?: ApiOpts
+) {
+  const result: GetRageTradeLeaderboardForEpochAndTierResult = await cacheFetch({
+    key: [REYA_CACHE_PREFIX, 'competition_leaderboard'],
+    fn: () => ApiClient.rageTrade.getLeaderboardForEpochAndTier(params),
+    staleTime: staleTime,
+    cacheTime: cacheTime,
+    opts
+  })
+
+  return result
 }
 
 export async function reyaCacheGetMaxExposure(staleTime: number, cacheTime: number, opts?: ApiOpts) {

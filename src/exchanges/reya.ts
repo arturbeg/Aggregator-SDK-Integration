@@ -1,4 +1,12 @@
-import type { MarginAccountEntity, MarketEntity, PositionEntity, PositionHistoryEntity } from '@reyaxyz/api-sdk'
+import type {
+  GetRageTradeLeaderboardForEpochAndTierResult,
+  GetRageTradeRewardsPerEpochAndTierParams,
+  GetRageTradeRewardsPerEpochAndTierResult,
+  MarginAccountEntity,
+  MarketEntity,
+  PositionEntity,
+  PositionHistoryEntity
+} from '@reyaxyz/api-sdk'
 import { ApiClient } from '@reyaxyz/api-sdk'
 import type { GetUserTradingLeaderboardDataResult, RankTrading } from '@reyaxyz/common'
 import { ConditionalOrderType } from '@reyaxyz/common'
@@ -29,9 +37,10 @@ import { reya, REYA_TOKENS_MAP } from '../configs/reya/config'
 import { mapResolution, reyaMarketIdToAsset } from '../configs/reya/helper'
 import {
   reyaCacheGetAllMarkets,
+  reyaCacheGetCompetitionLeaderBoard,
+  reyaCacheGetCompetitionRewards,
   reyaCacheGetLiquidationHistory,
   reyaCacheGetMarginAccount,
-  reyaCacheGetMaxExposure,
   reyaCacheGetPendingOrders,
   reyaCacheGetTradeHistory,
   reyaCacheGetXpInfo
@@ -880,7 +889,8 @@ export class ReyaAdapterV1 implements IAdapterV1 {
 
     const result = await createAccount({
       ownerAddress: wallet,
-      name: 'Rage Trade Account'
+      name: 'Rage Trade Account',
+      source: 'rage'
     })
 
     if (!result.accountId) throw new Error('Margin account not created')
@@ -1065,6 +1075,44 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       position: result.ranking,
       promotion: result.promotion as 'rankUp' | 'rankDown' | 'stale'
     }
+  }
+
+  async getCompetitionRewards(opts?: ApiOpts): Promise<GetRageTradeRewardsPerEpochAndTierResult> {
+    const sTimeXp = getStaleTime(CACHE_DAY, opts)
+    const result: GetRageTradeRewardsPerEpochAndTierResult = await reyaCacheGetCompetitionRewards(
+      sTimeXp,
+      sTimeXp * CACHE_TIME_MULT,
+      opts
+    )
+
+    return result
+  }
+
+  async getCompetitionLeaderBoard(
+    wallet: string,
+    epochId: string,
+    tierId: string,
+    skip: number,
+    limit: number,
+    opts?: ApiOpts
+  ): Promise<GetRageTradeLeaderboardForEpochAndTierResult> {
+    const sTimeXp = getStaleTime(CACHE_MINUTE, opts)
+
+    const params: GetRageTradeRewardsPerEpochAndTierParams = {
+      epochId: epochId,
+      tierId: tierId,
+      skip: skip,
+      limit: limit,
+      walletAddress: wallet
+    }
+    const result: GetRageTradeLeaderboardForEpochAndTierResult = await reyaCacheGetCompetitionLeaderBoard(
+      params,
+      sTimeXp,
+      sTimeXp * CACHE_TIME_MULT,
+      opts
+    )
+
+    return result
   }
 
   async getBars(params: GetBarsParams): Promise<TVBar[]> {

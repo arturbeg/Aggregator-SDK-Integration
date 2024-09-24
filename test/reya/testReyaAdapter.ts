@@ -145,8 +145,20 @@ async function getWithdrawableBalance() {
   console.dir(balance, { depth: 6 })
 }
 
+async function getCompetitionRewards() {
+  await aa.init(address)
+  const rewards = await aa.getCompetitionRewards()
+  console.dir(rewards, { depth: 6 })
+}
+
+async function getCompetitionLeaderBoard() {
+  await aa.init(address)
+  const leaderBoard = await aa.getCompetitionLeaderBoard('0x2f88a09ed4174750a464576fe49e586f90a34820', '1', '1', 0, 10)
+  console.dir(leaderBoard, { depth: 6 })
+}
+
 await init()
-await getXpInfo()
+// await getXpInfo()
 // getDynamicMarketMetadata()
 //await getAllPositions()
 //await getAllOrders()
@@ -157,3 +169,5 @@ await getXpInfo()
 // getOpenTradePreview()
 //getBars()
 // getWithdrawableBalance()
+await getCompetitionRewards()
+await getCompetitionLeaderBoard()
