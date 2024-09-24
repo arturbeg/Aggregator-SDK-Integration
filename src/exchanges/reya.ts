@@ -1089,7 +1089,6 @@ export class ReyaAdapterV1 implements IAdapterV1 {
   }
 
   async getCompetitionLeaderBoard(
-    wallet: string,
     epochId: string,
     tierId: string,
     skip: number,
@@ -1103,7 +1102,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       tierId: tierId,
       skip: skip,
       limit: limit,
-      walletAddress: wallet
+      walletAddress: ''
     }
     const result: GetRageTradeLeaderboardForEpochAndTierResult = await reyaCacheGetCompetitionLeaderBoard(
       params,

@@ -153,7 +153,7 @@ async function getCompetitionRewards() {
 
 async function getCompetitionLeaderBoard() {
   await aa.init(address)
-  const leaderBoard = await aa.getCompetitionLeaderBoard('0x2f88a09ed4174750a464576fe49e586f90a34820', '1', '1', 0, 10)
+  const leaderBoard = await aa.getCompetitionLeaderBoard( '1', '1', 0, 10)
   console.dir(leaderBoard, { depth: 6 })
 }
 
