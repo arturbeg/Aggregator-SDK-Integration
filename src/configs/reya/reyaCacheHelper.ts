@@ -140,6 +140,26 @@ export async function reyaCacheGetMarginAccount(
   })
 }
 
+export async function reyaCacheGetWithdrawableBalance(
+  marginAccountId: number,
+  tokenAddress: string,
+  staleTime: number,
+  cacheTime: number,
+  opts?: ApiOpts
+) {
+  return cacheFetch({
+    key: [REYA_CACHE_PREFIX, 'withdrawbalance'],
+    fn: () =>
+      ApiClient.account.getMaxWithdrawBalanceForAccount({
+        tokenAddress: tokenAddress,
+        marginAccountId: marginAccountId
+      }),
+    staleTime: staleTime,
+    cacheTime: cacheTime,
+    opts
+  })
+}
+
 export async function reyaCacheGetPendingOrders(
   walletAddress: string,
   marginAccountId: number,

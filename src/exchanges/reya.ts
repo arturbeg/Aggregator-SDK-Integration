@@ -42,7 +42,7 @@ import {
   reyaCacheGetLiquidationHistory,
   reyaCacheGetMarginAccount,
   reyaCacheGetPendingOrders,
-  reyaCacheGetTradeHistory,
+  reyaCacheGetTradeHistory, reyaCacheGetWithdrawableBalance,
   reyaCacheGetXpInfo
 } from '../configs/reya/reyaCacheHelper'
 import {
@@ -1181,20 +1181,17 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     opts?: ApiOpts
   ): Promise<FixedNumber> {
     if (!wallet) throw new Error('wallet address required')
+
+    if (!(collateralToken.symbol.toLowerCase() === 'rusd')) return FixedNumber.fromString('0')
     const sTimeAccount = getStaleTime(CACHE_SECOND, opts)
-    const marginAccount: MarginAccountEntity = await reyaCacheGetMarginAccount(
+    const balance: number = await reyaCacheGetWithdrawableBalance(
       this.marginAccountId,
+      '0xa9f32a851b1800742e47725da54a09a7ef2556a3', // rusd address
       sTimeAccount,
       sTimeAccount * CACHE_TIME_MULT,
       opts
     )
-
-    const collateral = marginAccount.collaterals.find(
-      (c) => c.token.toLowerCase() === collateralToken.symbol.toLowerCase()
-    )
-    if (!collateral) return FixedNumber.fromString('0')
-
-    return FixedNumber.fromString(String(Number(collateral.balance).toFixed(18)))
+    return FixedNumber.fromString(String(Number(balance).toFixed(18)))
   }
 
   isOrderForPosition(order: OrderInfo, position: PositionInfo): boolean {
