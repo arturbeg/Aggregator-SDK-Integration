@@ -32,17 +32,17 @@ dependencies:
     specifier: ^1.9.0
     version: 1.9.0
   '@reyaxyz/api-sdk':
-    specifier: ^0.129.0
-    version: 0.129.0
+    specifier: ^0.130.0
+    version: 0.130.0
   '@reyaxyz/common':
-    specifier: ^0.202.0
-    version: 0.202.0
+    specifier: ^0.204.0
+    version: 0.204.0
   '@reyaxyz/community-sdk':
-    specifier: ^0.44.23
-    version: 0.44.23
+    specifier: ^0.44.25
+    version: 0.44.25
   '@reyaxyz/sdk':
-    specifier: ^0.111.6
-    version: 0.111.6
+    specifier: ^0.111.8
+    version: 0.111.8
   '@synfutures/oyster-sdk':
     specifier: 0.1.11
     version: 0.1.11
@@ -1115,10 +1115,10 @@ packages:
       bn.js: 5.2.1
     dev: false
 
-  /@reyaxyz/api-sdk@0.129.0:
-    resolution: {integrity: sha512-ZSLYAXT5gVdySeN/Frp7SrWAHQYYAA+BJm7GoPC6e0sJ5DGicSCi6VM18G9d63OAoLC+9h4YgFCYQSMAwXnt7g==}
+  /@reyaxyz/api-sdk@0.130.0:
+    resolution: {integrity: sha512-k4e9FOFa6Hd3qQhiaSQyYQkFH7omV5Ukvkdi+Aihnlj0wxdWfoHs6NtsNIhwRXErRslxm0+Wp25OkaXdwa4GAg==}
     dependencies:
-      '@reyaxyz/common': 0.202.0
+      '@reyaxyz/common': 0.204.0
       '@simplewebauthn/types': 10.0.0
       axios: 1.7.7
       bignumber.js: 9.1.2
@@ -1131,8 +1131,8 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@reyaxyz/common@0.202.0:
-    resolution: {integrity: sha512-v8a4ukHScKvgxNU+1r3yaNEKEA6m7sTU7MGbDNi6uLsUApHS6DmSzLjcG7ZNFBAV0saz60zMU0JBXKnwcTNU3g==}
+  /@reyaxyz/common@0.204.0:
+    resolution: {integrity: sha512-xCbOn9CyqVI/tKDR22o2fjvJk3nU++fTGcbYZFiuhjh6xVbpI2RbbpirUAB4wXt1/2jaww6AbtfAiQ1es+3Cog==}
     dependencies:
       axios: 1.7.7
       bignumber.js: 9.1.2
@@ -1145,12 +1145,12 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@reyaxyz/community-sdk@0.44.23:
-    resolution: {integrity: sha512-Nn/+lH0Ld9hkzT+kEqy2leXO7Ohm4Capgc6+RkhBFfFq7nHekkZdnKbLRplRdWfL41tL0nUdEqzUlrV7rydQ+g==}
+  /@reyaxyz/community-sdk@0.44.25:
+    resolution: {integrity: sha512-q/eBGPGcF3iRDeQc7c0wRNsaG1APVQX+lDK/Lixaw/aFi9GcnlZ5LzGidtt26M3JRO7rTnOGAPIonQrxkQsgKw==}
     dependencies:
       '@gelatonetwork/relay-sdk': 5.5.6
-      '@reyaxyz/common': 0.202.0
-      '@reyaxyz/sdk': 0.111.6
+      '@reyaxyz/common': 0.204.0
+      '@reyaxyz/sdk': 0.111.8
       ethers: 6.9.0
     transitivePeerDependencies:
       - bufferutil
@@ -1158,10 +1158,10 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@reyaxyz/sdk@0.111.6:
-    resolution: {integrity: sha512-TlNZG2LUg4vfqm82U2RuQU5O8l0wEPN6/AKtq4sdgwjVwT69Pu8busYwBEUe8PsMODNA/fdHKJAPmVf9+rY1ng==}
+  /@reyaxyz/sdk@0.111.8:
+    resolution: {integrity: sha512-M1NQpfCyc0gqlF/dhJ/U44mB6ZDyCP7LIpGi0yPMfJ9EOud25WFT1It9RlJNS1VIxar9Hm46IKgdTxLQ0ckfSg==}
     dependencies:
-      '@reyaxyz/common': 0.202.0
+      '@reyaxyz/common': 0.204.0
       axios: 1.7.7
       bignumber.js: 9.1.2
       ethers: 6.9.0
@@ -1256,7 +1256,7 @@ packages:
       fast-stable-stringify: 1.0.0
       jayson: 4.1.2
       node-fetch: 2.7.0
-      rpc-websockets: 9.0.2
+      rpc-websockets: 9.0.4
       superstruct: 2.0.2
     transitivePeerDependencies:
       - bufferutil
@@ -1266,6 +1266,12 @@ packages:
 
   /@swc/helpers@0.5.12:
     resolution: {integrity: sha512-KMZNXiGibsW9kvZAO1Pam2JPTDBm+KSHMMHWdsyI/1DbIZjT2A6Gy3hblVXUMEDvUAKq+e0vL0X0o54owWji7g==}
+    dependencies:
+      tslib: 2.7.0
+    dev: false
+
+  /@swc/helpers@0.5.13:
+    resolution: {integrity: sha512-UoKGxQ3r5kYI9dALKJapMmuK+1zWM/H17Z1+iwnNmzcJRnfFuevZs375TA5rW31pu4BS4NoSy1fRsexDXfWn5w==}
     dependencies:
       tslib: 2.7.0
     dev: false
@@ -1726,7 +1732,7 @@ packages:
   /axios@1.7.2:
     resolution: {integrity: sha512-2A8QhOMrbomlDuiLeK9XibIBzuHeRcqqNOHp0Cyp5EoJ1IFDh+XZH3A6BkXtv0K4gFGCI0Y4BM7B1wOEi0Rmgw==}
     dependencies:
-      follow-redirects: 1.15.6
+      follow-redirects: 1.15.9
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -2726,16 +2732,6 @@ packages:
   /flatted@3.3.1:
     resolution: {integrity: sha512-X8cqMLLie7KsNUDSdzeN8FYK9rEt4Dt67OsG/DNGnYTSDBG4uFAJFBnUeiV+zCVAvwFy56IjM9sH51jVaEhNxw==}
     dev: true
-
-  /follow-redirects@1.15.6:
-    resolution: {integrity: sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
-    dev: false
 
   /follow-redirects@1.15.9:
     resolution: {integrity: sha512-gew4GsXizNgdoRyqmyfMHyAmXsZDk6mHkSxZFCzW9gwlbtOW44CDtYavM+y+72qD/Vq2l550kMF52DT8fOLJqQ==}
@@ -3799,6 +3795,21 @@ packages:
     resolution: {integrity: sha512-YzggvfItxMY3Lwuax5rC18inhbjJv9Py7JXRHxTIi94JOLrqBsSsUUc5bbl5W6c11tXhdfpDPK0KzBhoGe8jjw==}
     dependencies:
       '@swc/helpers': 0.5.12
+      '@types/uuid': 8.3.4
+      '@types/ws': 8.5.12
+      buffer: 6.0.3
+      eventemitter3: 5.0.1
+      uuid: 8.3.2
+      ws: 8.18.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+    optionalDependencies:
+      bufferutil: 4.0.8
+      utf-8-validate: 5.0.10
+    dev: false
+
+  /rpc-websockets@9.0.4:
+    resolution: {integrity: sha512-yWZWN0M+bivtoNLnaDbtny4XchdAIF5Q4g/ZsC5UC61Ckbp0QczwO8fg44rV3uYmY4WHd+EZQbn90W1d8ojzqQ==}
+    dependencies:
+      '@swc/helpers': 0.5.13
       '@types/uuid': 8.3.4
       '@types/ws': 8.5.12
       buffer: 6.0.3

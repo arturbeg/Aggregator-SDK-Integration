@@ -882,11 +882,18 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     const accounts = await ApiClient.account.getMarginAccounts({
       address: wallet
     })
-    if (accounts.length > 0) {
-      this.marginAccountId = accounts[0].id
+    // account with lowest id
+    const lowestAccount = accounts.reduce((acc, curr) => {
+      if (acc.id > curr.id) {
+        return acc
+      }
+      return curr
+    })
+
+    if (lowestAccount) {
+      this.marginAccountId = lowestAccount.id
       return
     }
-
     const result = await createAccount({
       ownerAddress: wallet,
       name: 'Rage Trade Account',
