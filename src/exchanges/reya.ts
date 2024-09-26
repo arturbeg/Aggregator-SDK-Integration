@@ -1109,7 +1109,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       tierId: tierId,
       skip: skip,
       limit: limit,
-      walletAddress: ''
+      walletAddress: '0x0000000000000000000000000000000000000000'
     }
     const result: GetRageTradeLeaderboardForEpochAndTierResult = await reyaCacheGetCompetitionLeaderBoard(
       params,
