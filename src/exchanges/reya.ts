@@ -1,5 +1,6 @@
 import type {
   GetRageTradeLeaderboardForEpochAndTierResult,
+  GetRageTradeLeaderboardForWalletAddressResult,
   GetRageTradeRewardsPerEpochAndTierParams,
   GetRageTradeRewardsPerEpochAndTierResult,
   MarginAccountEntity,
@@ -37,12 +38,14 @@ import { reya, REYA_TOKENS_MAP } from '../configs/reya/config'
 import { mapResolution, reyaMarketIdToAsset } from '../configs/reya/helper'
 import {
   reyaCacheGetAllMarkets,
+  reyaCacheGetCompetitionDetailsForWalletAddress,
   reyaCacheGetCompetitionLeaderBoard,
   reyaCacheGetCompetitionRewards,
   reyaCacheGetLiquidationHistory,
   reyaCacheGetMarginAccount,
   reyaCacheGetPendingOrders,
-  reyaCacheGetTradeHistory, reyaCacheGetWithdrawableBalance,
+  reyaCacheGetTradeHistory,
+  reyaCacheGetWithdrawableBalance,
   reyaCacheGetXpInfo
 } from '../configs/reya/reyaCacheHelper'
 import {
@@ -1118,6 +1121,20 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       opts
     )
 
+    return result
+  }
+
+  async getCompetitionDetailsForWalletAddress(
+    walletAddress: string,
+    opts?: ApiOpts
+  ): Promise<GetRageTradeLeaderboardForWalletAddressResult> {
+    const sTimeXp = getStaleTime(CACHE_MINUTE, opts)
+    const result: GetRageTradeLeaderboardForWalletAddressResult = await reyaCacheGetCompetitionDetailsForWalletAddress(
+      walletAddress,
+      sTimeXp,
+      sTimeXp * CACHE_TIME_MULT,
+      opts
+    )
     return result
   }
 

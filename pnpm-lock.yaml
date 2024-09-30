@@ -32,8 +32,8 @@ dependencies:
     specifier: ^1.9.0
     version: 1.9.0
   '@reyaxyz/api-sdk':
-    specifier: ^0.130.0
-    version: 0.130.0
+    specifier: ^0.131.0
+    version: 0.131.0
   '@reyaxyz/common':
     specifier: ^0.204.0
     version: 0.204.0
@@ -1115,8 +1115,8 @@ packages:
       bn.js: 5.2.1
     dev: false
 
-  /@reyaxyz/api-sdk@0.130.0:
-    resolution: {integrity: sha512-k4e9FOFa6Hd3qQhiaSQyYQkFH7omV5Ukvkdi+Aihnlj0wxdWfoHs6NtsNIhwRXErRslxm0+Wp25OkaXdwa4GAg==}
+  /@reyaxyz/api-sdk@0.131.0:
+    resolution: {integrity: sha512-Xwj2KVhlVPeQNt4LaRN1hdqHWMNfhk+uvsywUBDwia3Pi5kzUNe/whT9Sb0QI9i4qfJQSzEwwpDg4qSPi4sJjg==}
     dependencies:
       '@reyaxyz/common': 0.204.0
       '@simplewebauthn/types': 10.0.0

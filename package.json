@@ -102,7 +102,7 @@
     "@perennial/sdk": "0.0.1-beta29",
     "@pythnetwork/client": "^2.21.0",
     "@pythnetwork/price-service-client": "^1.9.0",
-    "@reyaxyz/api-sdk": "^0.130.0",
+    "@reyaxyz/api-sdk": "^0.131.0",
     "@reyaxyz/common": "^0.204.0",
     "@reyaxyz/community-sdk": "^0.44.25",
     "@reyaxyz/sdk": "^0.111.8",

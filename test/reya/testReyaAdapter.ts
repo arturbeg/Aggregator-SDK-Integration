@@ -157,6 +157,12 @@ async function getCompetitionLeaderBoard() {
   console.dir(leaderBoard, { depth: 6 })
 }
 
+async function getCompetitionDetailsForWalletAddress() {
+  await aa.init(address)
+  const details = await aa.getCompetitionDetailsForWalletAddress(address)
+  console.dir(details, { depth: 6 })
+}
+
 await init()
 // await getXpInfo()
 // getDynamicMarketMetadata()
@@ -168,6 +174,7 @@ await init()
 // getLiquidationHistory()
 // getOpenTradePreview()
 //getBars()
-getWithdrawableBalance()
+//getWithdrawableBalance()
 // await getCompetitionRewards()
 // await getCompetitionLeaderBoard()
+await getCompetitionDetailsForWalletAddress()

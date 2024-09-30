@@ -1,6 +1,7 @@
 import type {
   GetMarketsResult,
   GetRageTradeLeaderboardForEpochAndTierResult,
+  GetRageTradeLeaderboardForWalletAddressResult,
   GetRageTradeRewardsPerEpochAndTierParams,
   GetRageTradeRewardsPerEpochAndTierResult,
   PositionHistoryEntity
@@ -63,6 +64,26 @@ export async function reyaCacheGetCompetitionLeaderBoard(
   const result: GetRageTradeLeaderboardForEpochAndTierResult = await cacheFetch({
     key: [REYA_CACHE_PREFIX, 'competition_leaderboard'],
     fn: () => ApiClient.rageTrade.getLeaderboardForEpochAndTier(params),
+    staleTime: staleTime,
+    cacheTime: cacheTime,
+    opts
+  })
+
+  return result
+}
+
+export async function reyaCacheGetCompetitionDetailsForWalletAddress(
+  walletAddress: string,
+  staleTime: number,
+  cacheTime: number,
+  opts?: ApiOpts
+) {
+  const result: GetRageTradeLeaderboardForWalletAddressResult = await cacheFetch({
+    key: [REYA_CACHE_PREFIX, 'competition_details_for_wallet_address', walletAddress],
+    fn: () =>
+      ApiClient.rageTrade.getLeaderboardDetailsForWalletAddress({
+        walletAddress: walletAddress
+      }),
     staleTime: staleTime,
     cacheTime: cacheTime,
     opts
