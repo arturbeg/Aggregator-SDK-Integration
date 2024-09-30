@@ -62,7 +62,10 @@ export async function reyaCacheGetCompetitionLeaderBoard(
   opts?: ApiOpts
 ) {
   const result: GetRageTradeLeaderboardForEpochAndTierResult = await cacheFetch({
-    key: [REYA_CACHE_PREFIX, 'competition_leaderboard'],
+    key: [
+      REYA_CACHE_PREFIX,
+      'competition_leaderboard' + '-' + params.epochId + '-' + params.tierId + '-' + params.skip + '-' + params.limit
+    ],
     fn: () => ApiClient.rageTrade.getLeaderboardForEpochAndTier(params),
     staleTime: staleTime,
     cacheTime: cacheTime,

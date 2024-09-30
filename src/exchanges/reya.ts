@@ -1105,7 +1105,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     limit: number,
     opts?: ApiOpts
   ): Promise<GetRageTradeLeaderboardForEpochAndTierResult> {
-    const sTimeXp = getStaleTime(CACHE_MINUTE, opts)
+    const sTimeXp = getStaleTime(CACHE_SECOND, opts)
 
     const params: GetRageTradeRewardsPerEpochAndTierParams = {
       epochId: epochId,
