@@ -885,9 +885,9 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     const accounts = await ApiClient.account.getMarginAccounts({
       address: wallet
     })
-    // account with lowest id
+    // Account with the lowest id
     const lowestAccount = accounts.reduce((acc, curr) => {
-      if (acc.id > curr.id) {
+      if (acc.id < curr.id) {
         return acc
       }
       return curr

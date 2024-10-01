@@ -161,7 +161,7 @@ export function signOrder(
         },
         market: {
           id: market.id,
-          exchangeId: market.orderInfo.exchangeId,
+          exchangeId: 3,
           counterpartyAccountIds: market.orderInfo.counterpartyAccountIds,
           currentPrice: market.markPrice,
           minOrderSizeBase: market.minOrderSizeBase,
@@ -219,7 +219,7 @@ export function signTriggerOrder(
         orderType: orderType,
         marketId: market.id,
         supportingParams: {
-          exchangeId: market.orderInfo.exchangeId,
+          exchangeId: 3,
           counterpartyAccountIds: market.orderInfo.counterpartyAccountIds,
           currentPrice: market.markPrice
         },
@@ -277,7 +277,7 @@ export function signUpdateOrder(
         orderType: orderType,
         marketId: market.id,
         supportingParams: {
-          exchangeId: market.orderInfo.exchangeId,
+          exchangeId: 3,
           counterpartyAccountIds: market.orderInfo.counterpartyAccountIds,
           currentPrice: market.markPrice
         },
