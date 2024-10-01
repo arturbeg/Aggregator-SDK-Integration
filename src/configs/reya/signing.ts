@@ -166,7 +166,8 @@ export function signOrder(
           currentPrice: market.markPrice,
           minOrderSizeBase: market.minOrderSizeBase,
           baseSpacing: market.baseSpacing
-        }
+        },
+        tradeSource: 'rage'
       })
       return undefined
     },
