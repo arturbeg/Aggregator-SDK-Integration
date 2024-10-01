@@ -30,7 +30,7 @@ export async function reyaCacheGetAllMarkets(staleTime: number, cacheTime: numbe
 
 export async function reyaCacheGetXpInfo(walletAddress: string, staleTime: number, cacheTime: number, opts?: ApiOpts) {
   const lgeStatus: GetUserTradingLeaderboardDataResult = await cacheFetch({
-    key: [REYA_CACHE_PREFIX, 'xp'],
+    key: [REYA_CACHE_PREFIX, 'xp' + '-' + walletAddress],
     fn: () =>
       CommunityClient.lge.getUserTradingLeaderboardData({
         address: walletAddress
@@ -82,7 +82,7 @@ export async function reyaCacheGetCompetitionDetailsForWalletAddress(
   opts?: ApiOpts
 ) {
   const result: GetRageTradeLeaderboardForWalletAddressResult = await cacheFetch({
-    key: [REYA_CACHE_PREFIX, 'competition_details_for_wallet_address', walletAddress],
+    key: [REYA_CACHE_PREFIX, 'competition_details_for_wallet_address' + walletAddress],
     fn: () =>
       ApiClient.rageTrade.getLeaderboardDetailsForWalletAddress({
         walletAddress: walletAddress
@@ -152,7 +152,7 @@ export async function reyaCacheGetMarginAccount(
   opts?: ApiOpts
 ) {
   return cacheFetch({
-    key: [REYA_CACHE_PREFIX, 'account'],
+    key: [REYA_CACHE_PREFIX, 'account' + '-' + marginAccountId],
     fn: () =>
       ApiClient.account.getMarginAccount({
         address: '0x0000000000000000000000000000000000000000',
@@ -172,7 +172,7 @@ export async function reyaCacheGetWithdrawableBalance(
   opts?: ApiOpts
 ) {
   return cacheFetch({
-    key: [REYA_CACHE_PREFIX, 'withdrawbalance'],
+    key: [REYA_CACHE_PREFIX, 'withdrawbalance' + '-' + marginAccountId + '-' + tokenAddress],
     fn: () =>
       ApiClient.account.getMaxWithdrawBalanceForAccount({
         tokenAddress: tokenAddress,
@@ -192,7 +192,7 @@ export async function reyaCacheGetPendingOrders(
   opts?: ApiOpts
 ) {
   return cacheFetch({
-    key: [REYA_CACHE_PREFIX, 'pending_orders'],
+    key: [REYA_CACHE_PREFIX, 'pending_orders' + '-' + marginAccountId],
     fn: () =>
       ApiClient.conditionalOrders.getConditionalOrdersHistoryForMarginAccount({
         address: walletAddress,
@@ -213,7 +213,7 @@ export async function reyaCacheGetLiquidationHistory(
 ): Promise<GetLiquidationHistoryForOwnerAddressResult> {
   const address: Lowercase<string> = walletAddress.toLowerCase() as Lowercase<string>
   return cacheFetch({
-    key: [REYA_CACHE_PREFIX, 'liquidation'],
+    key: [REYA_CACHE_PREFIX, 'liquidation' + '-' + walletAddress],
     fn: () =>
       ApiClient.account.getLiquidationHistoryForOwnerAddress({
         address: address,
@@ -239,7 +239,7 @@ export async function reyaCacheGetTradeHistory(
   let totalCount = 0
   do {
     const tradeHistoryPart = await cacheFetch({
-      key: [REYA_CACHE_PREFIX, 'tradesHistory', page],
+      key: [REYA_CACHE_PREFIX, 'tradesHistory' + '-' + marginAccountId + '-' + page],
       fn: () =>
         ApiClient.account.getPositionsHistoryForMarginAccountPaginated({
           address: address,
