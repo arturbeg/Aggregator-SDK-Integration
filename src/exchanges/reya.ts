@@ -895,12 +895,15 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       address: wallet
     })
     // Account with the lowest id
-    const lowestAccount = accounts.reduce((acc, curr) => {
-      if (acc.id < curr.id) {
-        return acc
-      }
-      return curr
-    })
+    const lowestAccount =
+      accounts.length > 0
+        ? accounts.reduce((acc, curr) => {
+            if (acc.id < curr.id) {
+              return acc
+            }
+            return curr
+          })
+        : null
 
     if (lowestAccount) {
       this.marginAccountId = lowestAccount.id
