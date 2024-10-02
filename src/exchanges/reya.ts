@@ -109,8 +109,10 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     const txs: ActionParam[] = []
     for (const each of params) {
       if (each.protocol !== 'REYA') throw new Error('invalid protocol id')
-      console.log(this.marginAccountId, 'margin account')
-      // if (each.chainId !== arbitrum.id || each.chainId !== optimism.id) throw new Error('chain id mismatch')
+      if (!each.wallet) throw new Error('invalid wallet')
+      if (this.marginAccountId === 0) {
+        await this.init(each.wallet)
+      }
       txs.push(signApproveAndDeposit(each.chainId, this.marginAccountId, Number(each.amount), each.token.address))
     }
     return txs
@@ -168,6 +170,9 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     )
     if (positionInfo.length !== closePositionData.length) throw new Error('length mismatch')
 
+    if (this.marginAccountId === 0) {
+      await this.init(wallet)
+    }
     for (let i = 0; i < positionInfo.length; ++i) {
       const closeData = closePositionData[i]
       const positionInfoData = positionInfo[i]
@@ -852,6 +857,10 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     const allMarkets = (await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)).filter(
       (m) => m.isActive
     )
+
+    if (this.marginAccountId === 0) {
+      await this.init(wallet)
+    }
     for (const each of orderData) {
       if (each.collateral.symbol !== REYA_COLLATERAL_TOKEN.symbol) throw new Error('token not supported')
       if (!each.sizeDelta.isTokenAmount) throw new Error('size delta required in token terms')
@@ -989,6 +998,9 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       (m) => m.isActive
     )
 
+    if (this.marginAccountId === 0) {
+      await this.init(wallet)
+    }
     for (const each of orderData) {
       // ensure size delta is in token terms
       if (!each.sizeDelta.isTokenAmount) throw new Error('size delta required in token terms')
@@ -1042,6 +1054,10 @@ export class ReyaAdapterV1 implements IAdapterV1 {
 
     for (const each of params) {
       if (each.protocol !== 'REYA') throw new Error('invalid protocol id')
+      if (!each.wallet) throw new Error('wallet address required')
+      if (this.marginAccountId === 0) {
+        await this.init(each.wallet)
+      }
       payload.push(
         signWithdraw(
           each.chainId,
