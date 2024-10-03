@@ -1,4 +1,5 @@
 import type {
+  GetRageTradeDailyVolumeForPeriodResult,
   GetRageTradeLeaderboardForEpochAndTierResult,
   GetRageTradeLeaderboardForWalletAddressResult,
   GetRageTradeRewardsPerEpochAndTierParams,
@@ -41,6 +42,7 @@ import {
   reyaCacheGetCompetitionDetailsForWalletAddress,
   reyaCacheGetCompetitionLeaderBoard,
   reyaCacheGetCompetitionRewards,
+  reyaCacheGetDailyTradingVolume,
   reyaCacheGetLiquidationHistory,
   reyaCacheGetMarginAccount,
   reyaCacheGetPendingOrders,
@@ -1152,6 +1154,22 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       walletAddress,
       sTimeXp,
       sTimeXp * CACHE_TIME_MULT,
+      opts
+    )
+    return result
+  }
+
+  async getDailyTradingVolume(
+    startTimestamp: number,
+    endTimestamp: number,
+    opts?: ApiOpts
+  ): Promise<GetRageTradeDailyVolumeForPeriodResult> {
+    const sTimeVolume = getStaleTime(CACHE_MINUTE, opts)
+    const result: GetRageTradeDailyVolumeForPeriodResult = await reyaCacheGetDailyTradingVolume(
+      startTimestamp,
+      endTimestamp,
+      sTimeVolume,
+      sTimeVolume * CACHE_TIME_MULT,
       opts
     )
     return result

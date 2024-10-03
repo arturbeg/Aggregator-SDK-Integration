@@ -1,5 +1,7 @@
 import type {
+  GetLiquidationHistoryForOwnerAddressResult,
   GetMarketsResult,
+  GetRageTradeDailyVolumeForPeriodResult,
   GetRageTradeLeaderboardForEpochAndTierResult,
   GetRageTradeLeaderboardForWalletAddressResult,
   GetRageTradeRewardsPerEpochAndTierParams,
@@ -7,7 +9,6 @@ import type {
   PositionHistoryEntity
 } from '@reyaxyz/api-sdk'
 import { ApiClient } from '@reyaxyz/api-sdk'
-import type { GetLiquidationHistoryForOwnerAddressResult } from '@reyaxyz/api-sdk/src/clients/modules/account/types'
 import type { GetUserTradingLeaderboardDataResult } from '@reyaxyz/common'
 import { CommunityClient } from '@reyaxyz/community-sdk'
 
@@ -86,6 +87,28 @@ export async function reyaCacheGetCompetitionDetailsForWalletAddress(
     fn: () =>
       ApiClient.rageTrade.getLeaderboardDetailsForWalletAddress({
         walletAddress: walletAddress
+      }),
+    staleTime: staleTime,
+    cacheTime: cacheTime,
+    opts
+  })
+
+  return result
+}
+
+export async function reyaCacheGetDailyTradingVolume(
+  timestampFromMs: number,
+  timestampToMs: number,
+  staleTime: number,
+  cacheTime: number,
+  opts?: ApiOpts
+) {
+  const result: GetRageTradeDailyVolumeForPeriodResult = await cacheFetch({
+    key: [REYA_CACHE_PREFIX, 'dailytradingvolume' + timestampFromMs + '-' + timestampToMs],
+    fn: () =>
+      ApiClient.rageTrade.getDailyVolumeForPeriod({
+        timestampFrom: timestampFromMs,
+        timestampTo: timestampToMs
       }),
     staleTime: staleTime,
     cacheTime: cacheTime,

@@ -163,6 +163,13 @@ async function getCompetitionDetailsForWalletAddress() {
   console.dir(details, { depth: 6 })
 }
 
+async function getDailyTradingVolume() {
+  await aa.init(address)
+  // timestamps in milliseconds
+  const volume = await aa.getDailyTradingVolume(1717948070000, 1727948070000)
+  console.dir(volume, { depth: 6 })
+}
+
 await init()
 // await getXpInfo()
 // getDynamicMarketMetadata()
@@ -177,4 +184,5 @@ await init()
 //getWithdrawableBalance()
 // await getCompetitionRewards()
 // await getCompetitionLeaderBoard()
-await getCompetitionDetailsForWalletAddress()
+// await getCompetitionDetailsForWalletAddress()
+await getDailyTradingVolume()

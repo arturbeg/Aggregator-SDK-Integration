@@ -32,17 +32,17 @@ dependencies:
     specifier: ^1.9.0
     version: 1.9.0
   '@reyaxyz/api-sdk':
-    specifier: ^0.132.1
-    version: 0.132.1
+    specifier: ^0.134.0
+    version: 0.134.0
   '@reyaxyz/common':
-    specifier: ^0.205.0
-    version: 0.205.0
+    specifier: ^0.207.0
+    version: 0.207.0
   '@reyaxyz/community-sdk':
-    specifier: ^0.44.27
-    version: 0.44.27
+    specifier: ^0.44.31
+    version: 0.44.31
   '@reyaxyz/sdk':
-    specifier: ^0.112.0
-    version: 0.112.0
+    specifier: ^0.112.4
+    version: 0.112.4
   '@synfutures/oyster-sdk':
     specifier: 0.1.11
     version: 0.1.11
@@ -179,8 +179,8 @@ packages:
       regenerator-runtime: 0.14.1
     dev: false
 
-  /@babel/runtime@7.25.6:
-    resolution: {integrity: sha512-VBj9MYyDb9tuLq7yzqjgzt6Q+IBQLrGZfdjOekyEirZPHxXWoTSGUTMrpsfi58Up73d13NfYLv8HT9vmznjzhQ==}
+  /@babel/runtime@7.25.7:
+    resolution: {integrity: sha512-FjoyLe754PMiYsFaN5C94ttGiOmBNYTf6pLr4xXHAT5uctHb092PBszndLDR5XA/jghQvn4n7JMHl7dmTgbm9w==}
     engines: {node: '>=6.9.0'}
     dependencies:
       regenerator-runtime: 0.14.1
@@ -1115,10 +1115,10 @@ packages:
       bn.js: 5.2.1
     dev: false
 
-  /@reyaxyz/api-sdk@0.132.1:
-    resolution: {integrity: sha512-/sR/dOJg+2jP/FDObD5+5S1HwGjEO3J+vLExOmyKZCRc5aCqO9OoQ+oGx1WjbKVX0gJ13uyLgXTW3yMX1Emw2g==}
+  /@reyaxyz/api-sdk@0.134.0:
+    resolution: {integrity: sha512-2Bphe53Wetjfqqmv5hCW5uc6XXvo4vmKO8/dCfWTjE6bJwNwVu5k4KCqh/3G/7+VyUOXQzi3TeVgcC4+ax0unA==}
     dependencies:
-      '@reyaxyz/common': 0.205.0
+      '@reyaxyz/common': 0.207.0
       '@simplewebauthn/types': 10.0.0
       axios: 1.7.7
       bignumber.js: 9.1.2
@@ -1131,8 +1131,8 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@reyaxyz/common@0.205.0:
-    resolution: {integrity: sha512-8O7CsbW8S6z+iD3ysU5DtWZBer1NbRRkIwzOO8WUz8GpFL8lMqnXQfHzbYC3hw6QIFCb6qcku51nB4jK+2qI/Q==}
+  /@reyaxyz/common@0.207.0:
+    resolution: {integrity: sha512-MYy+TiW48V/OWu4BM+7W3jpXOxde7LftAslQgisJGRZoQVaUYdHSgmjMu2P/ik3hhrbyxuPrVVVrSesRyZrUeQ==}
     dependencies:
       axios: 1.7.7
       bignumber.js: 9.1.2
@@ -1145,12 +1145,12 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@reyaxyz/community-sdk@0.44.27:
-    resolution: {integrity: sha512-QwJBbYDFbFlzKxKPNANYtVUPQ/U4qLtGYdyb6owXLTRZjDFU2KsKC1SZWW12oAcrFzs2WA0mEfhCqSI6lmJqSg==}
+  /@reyaxyz/community-sdk@0.44.31:
+    resolution: {integrity: sha512-LzuDxq3+utRkAy0XKcxIq97o+V/5dHwr/O+EOx5OsjeSv1YNCdYYCCgcRIq+0Ea9CMFMgwbMzLYlTuM+AMsGaQ==}
     dependencies:
       '@gelatonetwork/relay-sdk': 5.5.6
-      '@reyaxyz/common': 0.205.0
-      '@reyaxyz/sdk': 0.112.0
+      '@reyaxyz/common': 0.207.0
+      '@reyaxyz/sdk': 0.112.4
       ethers: 6.9.0
     transitivePeerDependencies:
       - bufferutil
@@ -1158,10 +1158,10 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@reyaxyz/sdk@0.112.0:
-    resolution: {integrity: sha512-7BnnslXmKnaqcFF2phvrVJwCdw37WAq82EGQ/CqeELq3Gq3AJmRFcc1igQsAGTQ1HOgsdxpHvygqs94v3RuvZQ==}
+  /@reyaxyz/sdk@0.112.4:
+    resolution: {integrity: sha512-DwpvAu/njlK29WFo6IAwc2id7IRm3H8mSIUmngBA2SZGQ4YvbozAoWr/3gHWAYT6xgcYTU3e+Nwp5+mY9MfS7g==}
     dependencies:
-      '@reyaxyz/common': 0.205.0
+      '@reyaxyz/common': 0.207.0
       axios: 1.7.7
       bignumber.js: 9.1.2
       ethers: 6.9.0
@@ -1243,7 +1243,7 @@ packages:
   /@solana/web3.js@1.95.3:
     resolution: {integrity: sha512-O6rPUN0w2fkNqx/Z3QJMB9L225Ex10PRDH8bTaIUPZXMPV0QP8ZpPvjQnXK+upUczlRgzHzd6SjKIha1p+I6og==}
     dependencies:
-      '@babel/runtime': 7.25.6
+      '@babel/runtime': 7.25.7
       '@noble/curves': 1.6.0
       '@noble/hashes': 1.5.0
       '@solana/buffer-layout': 4.0.1
