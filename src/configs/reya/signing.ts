@@ -63,7 +63,7 @@ export function signWithdraw(
       })
       return undefined
     },
-    chainId: 1,
+    chainId: 42161,
     isEoaSigner: true,
     isUserAction: true,
     isAgentRequired: false,
@@ -130,7 +130,7 @@ export function signApproveAndDeposit(
       })
       return undefined
     },
-    chainId: 1,
+    chainId: 42161,
     isEoaSigner: true,
     isUserAction: true,
     isAgentRequired: false,
@@ -171,7 +171,7 @@ export function signOrder(
       })
       return undefined
     },
-    chainId: 1,
+    chainId: 42161,
     isEoaSigner: true,
     isUserAction: true,
     isAgentRequired: false,
@@ -227,7 +227,7 @@ export function signTriggerOrder(
       })
       return undefined
     },
-    chainId: 1,
+    chainId: 42161,
     isEoaSigner: true,
     isUserAction: true,
     isAgentRequired: false,
@@ -248,7 +248,7 @@ export function signCancelOrder(orderId: string): RequestSignerFnWithMetadata {
       })
       return undefined
     },
-    chainId: 1,
+    chainId: 42161,
     isEoaSigner: true,
     isUserAction: true,
     isAgentRequired: false,
@@ -286,7 +286,7 @@ export function signUpdateOrder(
       })
       return undefined
     },
-    chainId: 1,
+    chainId: 42161,
     isEoaSigner: true,
     isUserAction: true,
     isAgentRequired: false,
