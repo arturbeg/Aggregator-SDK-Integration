@@ -105,7 +105,7 @@ export const assetToRageToken = (asset: SupportedAsset) => {
   return {
     symbol: AssetMetadata[asset].baseCurrency.toUpperCase(),
     name: AssetMetadata[asset].name,
-    decimals: AssetMetadata[asset].displayDecimals,
+    decimals: 6,
     address: { [arbitrum.id]: zeroAddress, [optimism.id]: zeroAddress, [blast.id]: zeroAddress } // TODO: ?
   }
 }
@@ -270,19 +270,18 @@ export class PerennialAdapter implements IAdapterV1 {
 
       const tradeFee = calcTradeFee({
         positionDelta: orderDelta,
-        isMaker: false,
         marketSnapshot,
-        direction: positionSide
+        side: positionSide
       })
 
       const estEntryPrice = !Big6Math.isZero(orderDelta)
         ? calcEstExecutionPrice({
-            orderDirection: positionSide,
-            oraclePrice: latestPrice,
+            side: positionSide,
+            indexPrice: latestPrice,
             positionDelta: Big6Math.abs(orderDelta),
             marketSnapshot
           })
-        : { total: latestPrice, priceImpact: 0n, priceImpactPercentage: 0n }
+        : 0n
 
       const liquidationPrice = calcLiquidationPrice({
         marketSnapshot,
@@ -314,20 +313,20 @@ export class PerennialAdapter implements IAdapterV1 {
         errMsg = 'Order would exceed max leverage'
       }
 
-      const finalTradeFee = tradeFee.tradeFee + marketSnapshot.parameter.settlementFee
+      const finalTradeFee = tradeFee.tradeFee.total
 
       tradePreviews.push({
         marketId: newOrder.marketId,
         leverage: FixedNumber.fromValue(newLeverage, 6),
         size: toAmountInfo(BigNumber.from(newPosition), 6, true),
         margin: toAmountInfo(BigNumber.from(newCollateral), 6, true),
-        avgEntryPrice: FixedNumber.fromValue(estEntryPrice.total, 6),
+        avgEntryPrice: FixedNumber.fromValue(estEntryPrice, 6),
         liqudationPrice: FixedNumber.fromValue(liquidationPrice, 6),
         fee: FixedNumber.fromValue(finalTradeFee, 6),
         collateral: tokens['USDC'],
         isError,
         errMsg,
-        priceImpact: FixedNumber.fromValue(estEntryPrice.priceImpactPercentage * 100n, 6)
+        priceImpact: FixedNumber.fromValue(tradeFee.tradeImpact.pct * 100n, 6)
       })
     }
     return tradePreviews
@@ -358,9 +357,8 @@ export class PerennialAdapter implements IAdapterV1 {
       const newLeverage = calcLeverage(latestPrice, newPosition, userMarketSnapshot.local.collateral)
       const tradeFee = calcTradeFee({
         positionDelta: orderDelta,
-        isMaker: false,
         marketSnapshot,
-        direction: positionSide
+        side: positionSide
       })
 
       const liquidationPrice = calcLiquidationPrice({
@@ -379,7 +377,7 @@ export class PerennialAdapter implements IAdapterV1 {
       if (newLeverage > Big6Math.fromFloatString(maxLeverage.toString())) {
         errMsg = 'New position would exceed max leverage.'
       }
-      const finalTradeFee = tradeFee.tradeFee + marketSnapshot.parameter.settlementFee
+      const finalTradeFee = tradeFee.tradeFee.total
 
       tradePreviews.push({
         marketId: ragePosition.marketId,
@@ -1694,7 +1692,7 @@ export class PerennialAdapter implements IAdapterV1 {
 
     Object.values(marketsOracles).map((oracle) => {
       this.sdk.publicClient.watchContractEvent({
-        address: oracle.providerAddress,
+        address: oracle.address,
         abi: KeeperOracleAbi,
         eventName: 'OracleProviderVersionFulfilled',
         pollingInterval: CACHE_SECOND * 10, // poll every 10 seconds
