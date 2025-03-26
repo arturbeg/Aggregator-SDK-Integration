@@ -7,7 +7,7 @@ import type {
   MarginAccountEntity,
   MarketEntity,
   PositionEntity,
-  PositionHistoryEntity
+  OrderHistoryEntity
 } from '@reyaxyz/api-sdk'
 import { ApiClient } from '@reyaxyz/api-sdk'
 import type { GetUserTradingLeaderboardDataResult, RankTrading } from '@reyaxyz/common'
@@ -351,7 +351,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
   ): Promise<PaginatedRes<PositionInfo>> {
     if (!wallet) throw new Error('wallet address required')
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
-    await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
+    const markets = await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
 
     const sTimePositions = getStaleTime(CACHE_SECOND, opts)
     const positions: PositionInfo[] = []
@@ -365,9 +365,11 @@ export class ReyaAdapterV1 implements IAdapterV1 {
 
     for (let i = 0; i < perpPositions.length; i++) {
       const pos = perpPositions[i]
-      const marketId = encodeMarketId(reya.id.toString(), this.protocolId, pos.market.quoteToken)
+      const positionMarket = markets.find((m) => m.id === pos.marketId)
+      if (!positionMarket) throw new Error('Market not found')
+      const marketId = encodeMarketId(reya.id.toString(), this.protocolId, positionMarket.quoteToken)
       const posSize = FixedNumber.fromString(String(Math.abs(Number(pos.base))))
-      const posNtl = posSize.mulFN(FixedNumber.fromString(String(pos.market.markPrice)))
+      const posNtl = posSize.mulFN(FixedNumber.fromString(String(positionMarket.markPrice)))
       const leverage = posNtl.abs().div(FixedNumber.fromString(String(marginAccount.totalBalanceWithHaircut)))
       const marginUsed = posNtl.divFN(leverage)
       const direction = pos.side == 'long' ? 'LONG' : 'SHORT'
@@ -384,7 +386,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       }
 
       const posInfo: PositionInfo = {
-        marketId: encodeMarketId(reya.id.toString(), this.protocolId, pos.market.quoteToken),
+        marketId: encodeMarketId(reya.id.toString(), this.protocolId, positionMarket.quoteToken),
         posId: `${marketId}-${direction}-${marginAccount.id}`,
         size: toAmountInfoFN(posSize, true),
         margin: toAmountInfoFN(marginUsed, false),
@@ -396,7 +398,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
         leverage: leverage,
         direction: direction,
         collateral: REYA_COLLATERAL_TOKEN,
-        indexToken: REYA_TOKENS_MAP[pos.market.quoteToken],
+        indexToken: REYA_TOKENS_MAP[positionMarket.quoteToken],
         protocolId: this.protocolId,
         roe: aggregatePnl.divFN(marginUsed),
         mode: 'CROSS',
@@ -605,7 +607,7 @@ export class ReyaAdapterV1 implements IAdapterV1 {
   async getMarketState(wallet: string, marketIds: string[], opts?: ApiOpts | undefined): Promise<MarketState[]> {
     if (!wallet) throw new Error('wallet address required')
     const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
-    await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
+    const markets = await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
 
     const marketStates: MarketState[] = []
 
@@ -615,7 +617,10 @@ export class ReyaAdapterV1 implements IAdapterV1 {
       const mId = marketIds[i]
       const asset = reyaMarketIdToAsset(mId)
       let lev = ZERO_FN
-      const position = acccountData.positions.find((p) => p.market.quoteToken === asset)
+      const position = acccountData.positions.find((p) => {
+        const market = markets.find(m => m.id === p.marketId)
+        return market && market.quoteToken === asset
+      })
 
       if (position) {
         lev = FixedNumber.fromString(String(Number(position.size).toFixed(18)))
@@ -801,20 +806,24 @@ export class ReyaAdapterV1 implements IAdapterV1 {
     opts?: ApiOpts | undefined
   ): Promise<PaginatedRes<HistoricalTradeInfo>> {
     const trades: HistoricalTradeInfo[] = []
-    const tradesHistory: PositionHistoryEntity[] = await reyaCacheGetTradeHistory(
+    const tradesHistory: OrderHistoryEntity[] = await reyaCacheGetTradeHistory(
       wallet,
       this.marginAccountId,
       0,
       0,
       opts
     )
+    const sTimeMarkets = getStaleTime(CACHE_DAY, opts)
+    const markets = await reyaCacheGetAllMarkets(sTimeMarkets, sTimeMarkets * CACHE_TIME_MULT, opts)
     for (const th of tradesHistory) {
-      const asset = th.market.quoteToken
+      const tradeMarket = markets.find((m) => m.id === th.marketId)
+      if (!tradeMarket) throw new Error('Market not found')
+      const asset = tradeMarket.quoteToken
       const marketId = encodeMarketId(reya.id.toString(), this.protocolId, asset)
       const direction = th.action == 'long-trade' ? 'LONG' : 'SHORT'
       const size = FixedNumber.fromString(String(Math.abs(Number(th.base))))
 
-      const collateral = (Math.abs(Number(th.base)) * Number(th.executionPrice)) / th.market.maxLeverage
+      const collateral = (Math.abs(Number(th.base)) * Number(th.executionPrice)) / tradeMarket.maxLeverage
       const tradeData: TradeData = {
         marketId: marketId,
         direction: direction,

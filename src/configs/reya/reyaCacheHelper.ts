@@ -6,7 +6,7 @@ import type {
   GetRageTradeLeaderboardForWalletAddressResult,
   GetRageTradeRewardsPerEpochAndTierParams,
   GetRageTradeRewardsPerEpochAndTierResult,
-  PositionHistoryEntity
+  OrderHistoryEntity
 } from '@reyaxyz/api-sdk'
 import { ApiClient } from '@reyaxyz/api-sdk'
 import type { GetUserTradingLeaderboardDataResult } from '@reyaxyz/common'
@@ -254,17 +254,17 @@ export async function reyaCacheGetTradeHistory(
   staleTime: number,
   cacheTime: number,
   opts?: ApiOpts
-): Promise<PositionHistoryEntity[]> {
+): Promise<OrderHistoryEntity[]> {
   const address: Lowercase<string> = walletAddress.toLowerCase() as Lowercase<string>
   const limitStep = 200
   let page = 1
-  let tradeHistory: PositionHistoryEntity[] = []
+  let tradeHistory: OrderHistoryEntity[] = []
   let totalCount = 0
   do {
     const tradeHistoryPart = await cacheFetch({
       key: [REYA_CACHE_PREFIX, 'tradesHistory' + '-' + marginAccountId + '-' + page],
       fn: () =>
-        ApiClient.account.getPositionsHistoryForMarginAccountPaginated({
+        ApiClient.account.getMarginAccountOrderHistoryPaginated({
           address: address,
           marginAccountId: marginAccountId,
           page: 1,
